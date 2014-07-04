@@ -1,0 +1,18 @@
+""" Lazy shortcuts for pet projects
+"" golang exercism environment
+map \t :w<CR>:GoLint<CR>:!go test<CR>
+
+" Change shell
+set shell=bash  " Vim expects a POSIX-compliant shell, which Fish (my default shell) is not
+
+if has('gui_running')
+    set guifont=Inconsola:h15
+endif
+
+"""Autoload files when they are changed
+"autocmd! bufwritepost .vimrc source %
+
+ " Configure browser for haskell_doc.vim
+  let g:haddock_browser = "open"
+  let g:haddock_browser_callformat = "%s %s"
+
