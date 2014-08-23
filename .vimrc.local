@@ -1,6 +1,8 @@
-""" Lazy shortcuts for pet projects
+""" Lazy shortcuts for pet projects"
+"" C++ exercism environment
+map \t :w<CR>:!make<CR>
 "" golang exercism environment
-map \t :w<CR>:GoLint<CR>:!go test<CR>
+"map \t :w<CR>:GoLint<CR>:!go test<CR>
 
 " Change shell
 set shell=bash  " Vim expects a POSIX-compliant shell, which Fish (my default shell) is not
