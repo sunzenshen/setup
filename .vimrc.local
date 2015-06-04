@@ -2,7 +2,7 @@
 "" C++ exercism environment
 map \t :w<CR>:!make<CR>
 "" golang exercism environment
-"map \t :w<CR>:GoLint<CR>:!go test<CR>
+"map \t :w<CR>:GoLint<CR>:!make<CR>:!go vet<CR>
 
 " Change shell
 set shell=bash  " Vim expects a POSIX-compliant shell, which Fish (my default shell) is not
@@ -21,3 +21,8 @@ let g:haddock_browser_callformat = "%s %s"
 set tabstop=2
 set shiftwidth=2
 set expandtab
+
+"light works better than dark with low laptop brightness"
+set background=light
+
+set nohlsearch
