@@ -7,17 +7,6 @@ map \t :w<CR>:!cmake -G "Unix Makefiles" .<CR>:!make<CR>
 " Change shell
 set shell=bash  " Vim expects a POSIX-compliant shell, which Fish (my default shell) is not
 
-if has('gui_running')
-    set guifont=Inconsola:h15
-endif
-
-"Autoload files when they are changed"
-""autocmd! bufwritepost .vimrc source %
-
-" Configure browser for haskell_doc.vim
-let g:haddock_browser = "open"
-let g:haddock_browser_callformat = "%s %s"
-
 set tabstop=2
 set shiftwidth=2
 set expandtab
@@ -26,3 +15,5 @@ set expandtab
 set background=light
 
 set nohlsearch
+
+let g:syntastic_cpp_include_dirs=['/usr/local/Cellar/boost/1.63.0/include/']
