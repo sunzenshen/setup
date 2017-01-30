@@ -16,4 +16,4 @@ set background=light
 
 set nohlsearch
 
-let g:syntastic_cpp_include_dirs=['/usr/local/Cellar/boost/1.63.0/include/']
+let g:syntastic_cpp_include_dirs=['/usr/local/Cellar/boost/1.63.0/include/', '/usr/local/include/']
