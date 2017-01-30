@@ -1,6 +1,6 @@
 """ Lazy shortcuts for pet projects"
 "" C++ exercism environment
-map \t :w<CR>:!cmake -G "Unix Makefiles" .<CR>:!make<CR>
+map \t :w<CR>:!mkdir -p build<CR>:cd build<CR>:!cmake -G "Unix Makefiles" ..<CR>:!make<CR>:cd ..<CR>
 "" golang exercism environment
 "map \t :w<CR>:GoLint<CR>:!make<CR>:!go vet<CR>
 
