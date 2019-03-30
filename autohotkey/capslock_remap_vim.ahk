@@ -43,8 +43,27 @@
 
 ; Quick launching of common apps using Ctrl+Alt+letter - Alan edit
 
-; Win + 1 - File Explorer
+; Control+Alt -> WIN+#'s
+; 1 - File Explorer
 ^!f::Send #1
+; 2 - Slack
+^!s::Send #2
+; 3 - Visual Studio Code
+^!c::Send #3
+; 4 - Firefox
+^!f::Send #4
+; 5 - Google Chrome
+^!g::Send #5
+; 6 - oneNote
+^!n::Send #6
+; 7 - Github
+;;;;;;;;;;;;;;;;;
+; 8 - K
+^!k::Send #8
+; 9 - Outlook
+^!o::Send #9
+; 0 - Visual Studio
+^!o::Send #0
 
 Capslock & 1::Send #1
 Capslock & 2::Send #2
@@ -56,11 +75,6 @@ Capslock & 7::Send #7
 Capslock & 8::Send #8
 Capslock & 9::Send #9
 Capslock & 0::Send #0
-
-
-^!n::run Notepad++
-^!s::run "C:\Program Files\Sublime Text 2\sublime_text.exe"
-^!c::run cmd
 
 
 #Persistent
