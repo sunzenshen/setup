@@ -51,7 +51,7 @@
 ; 3 - Visual Studio Code
 ^!c::Send #3
 ; 4 - Firefox
-^!f::Send #4
+;;;;;;;;;;;;;;;;;
 ; 5 - Google Chrome
 ^!g::Send #5
 ; 6 - oneNote
@@ -63,7 +63,7 @@
 ; 9 - Outlook
 ^!o::Send #9
 ; 0 - Visual Studio
-^!o::Send #0
+;;;;;;;;;;;;;;;;;;;;
 
 Capslock & 1::Send #1
 Capslock & 2::Send #2
