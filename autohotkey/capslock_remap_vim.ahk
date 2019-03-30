@@ -43,6 +43,21 @@
 
 ; Quick launching of common apps using Ctrl+Alt+letter - Alan edit
 
+; Win + 1 - File Explorer
+^!f::Send #1
+
+Capslock & 1::Send #1
+Capslock & 2::Send #2
+Capslock & 3::Send #3
+Capslock & 4::Send #4
+Capslock & 5::Send #5
+Capslock & 6::Send #6
+Capslock & 7::Send #7
+Capslock & 8::Send #8
+Capslock & 9::Send #9
+Capslock & 0::Send #0
+
+
 ^!n::run Notepad++
 ^!s::run "C:\Program Files\Sublime Text 2\sublime_text.exe"
 ^!c::run cmd
@@ -58,7 +73,8 @@ CapsLock::Send {Blind}{esc}
 ; Interesting links that Alan is referencing from:
 ;https://www.maketecheasier.com/favorite-autohotkey-scripts/
 ; explanation for {Blind} https://autohotkey.com/docs/commands/Send.htm#blind
-
+; What is the Windows key called? (LWin) https://www.autohotkey.com/docs/KeyList.htm#modifier
+; How to send WIN + ?  https://superuser.com/questions/402244/how-to-simulate-wind-in-autohotkey
 
 
 
