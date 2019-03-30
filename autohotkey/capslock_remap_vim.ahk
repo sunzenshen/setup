@@ -1,3 +1,7 @@
+; Search 'Alan' for edits
+; Suffice to say, anyone reading this can use this freely.
+; You don't have to credit Alan, but be cool and credit the rest of these sources (Danik, Gustavo, et al) if you republish these settings.
+
 ; Capslock Remapping Script 
 ; Danik
 ; danikgames.com
@@ -37,17 +41,24 @@
 
 
 
-; Quick launching of common apps using Ctrl+Alt+letter
+; Quick launching of common apps using Ctrl+Alt+letter - Alan edit
 
 ^!n::run Notepad++
 ^!s::run "C:\Program Files\Sublime Text 2\sublime_text.exe"
 ^!c::run cmd
 
 
-
-
 #Persistent
 SetCapsLockState, AlwaysOff
+
+; Alan's Mods:
+; CapsLock pressed alone is an esc press
+CapsLock::Send {Blind}{esc}
+
+; Interesting links that Alan is referencing from:
+;https://www.maketecheasier.com/favorite-autohotkey-scripts/
+; explanation for {Blind} https://autohotkey.com/docs/commands/Send.htm#blind
+
 
 
 
