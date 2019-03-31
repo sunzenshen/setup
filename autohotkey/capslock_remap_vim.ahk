@@ -45,12 +45,12 @@
 
 ; Control+Alt -> WIN+#'s
 ; 1 - File Explorer
-^!f::Send #1
 ; 2 - Slack
 ^!s::Send #2
 ; 3 - Visual Studio Code
 ^!c::Send #3
 ; 4 - Firefox
+^!f::Send #4
 ;;;;;;;;;;;;;;;;;
 ; 5 - Google Chrome
 ^!g::Send #5
@@ -88,6 +88,9 @@ Capslock & Up::Send {Volume_Up 1}
 Capslock & Down::Send {Volume_Down 1}
 Capslock & Right::Send {Volume_Up 5}
 Capslock & Left::Send {Volume_Down 5}
+
+; Make Capslock+Space -> Windows Key
+Capslock & Space::Send {Blind}{LWIN}
 
 ; Interesting links that Alan is referencing from:
 ;https://www.maketecheasier.com/favorite-autohotkey-scripts/
@@ -179,11 +182,6 @@ Capslock & ,::SendInput {Ctrl Down}{z Down}
 Capslock & , up::SendInput {Ctrl Up}{z Up}
 Capslock & .::SendInput {Ctrl Down}{y Down}
 Capslock & . up::SendInput {Ctrl Up}{y Up}
-
-
-; Make Capslock+Space -> Enter
-Capslock & Space::SendInput {Enter Down}
-
 
 
 ; Make Win Key + Capslock work like Capslock
