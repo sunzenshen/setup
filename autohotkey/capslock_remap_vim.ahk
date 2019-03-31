@@ -84,6 +84,11 @@ SetCapsLockState, AlwaysOff
 ; CapsLock pressed alone is an esc press
 CapsLock::Send {Blind}{esc}
 
+Capslock & Up::Send {Volume_Up 1}
+Capslock & Down::Send {Volume_Down 1}
+Capslock & Right::Send {Volume_Up 5}
+Capslock & Left::Send {Volume_Down 5}
+
 ; Interesting links that Alan is referencing from:
 ;https://www.maketecheasier.com/favorite-autohotkey-scripts/
 ; explanation for {Blind} https://autohotkey.com/docs/commands/Send.htm#blind
