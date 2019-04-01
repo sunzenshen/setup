@@ -92,6 +92,10 @@ Capslock & Left::Send {Volume_Down 5}
 ; Make Capslock+Space -> Windows Key
 Capslock & Space::Send {Blind}{LWIN}
 
+; control + t -> new tab
+Capslock & t::SendInput {Ctrl Down}{t Down}
+Capslock & t up::SendInput {Ctrl Up}{t Up}
+
 ; Interesting links that Alan is referencing from:
 ;https://www.maketecheasier.com/favorite-autohotkey-scripts/
 ; explanation for {Blind} https://autohotkey.com/docs/commands/Send.htm#blind
