@@ -90,7 +90,8 @@ Capslock & Right::Send {Volume_Up 5}
 Capslock & Left::Send {Volume_Down 5}
 
 ; Make Capslock+Space -> Windows Key
-Capslock & Space::Send {Blind}{LWIN}
+Capslock & Space::Send {Blind}{LWIN DownTemp}
+Capslock & Space up::Send {Blind}{LWIN Up}
 
 ; control + t -> new tab
 Capslock & t::SendInput {Ctrl Down}{t Down}
