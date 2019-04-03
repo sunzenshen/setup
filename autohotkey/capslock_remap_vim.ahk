@@ -11,7 +11,6 @@
 ; - Hold Capslock and drag anywhere in a window to move it (not just the title bar).
 ; - Access the following functions when pressing Capslock: 
 ;     Cursor keys           - H, J, K, L (Vim-style)
-;     Space                 - Enter
 ;     Home, PgDn, PgUp, End - Y, U, I, O (above HJKL)
 ;     Backspace and Del     - N, M
 ;     Insert                - B
@@ -42,40 +41,8 @@
 
 
 ; Quick launching of common apps using Ctrl+Alt+letter - Alan edit
-
-; Control+Alt -> WIN+#'s
-; 1 - File Explorer
-; 2 - Slack
-^!s::Send #2
-; 3 - Visual Studio Code
-^!c::Send #3
-; 4 - Firefox
-^!f::Send #4
-;;;;;;;;;;;;;;;;;
-; 5 - Google Chrome
-^!g::Send #5
-; 6 - oneNote
-^!n::Send #6
-; 7 - Github
-;;;;;;;;;;;;;;;;;
-; 8 - K
-^!k::Send #8
-; 9 - Outlook
-^!o::Send #9
-; 0 - Visual Studio
-;;;;;;;;;;;;;;;;;;;;
-
-Capslock & 1::Send #1
-Capslock & 2::Send #2
-Capslock & 3::Send #3
-Capslock & 4::Send #4
-Capslock & 5::Send #5
-Capslock & 6::Send #6
-Capslock & 7::Send #7
-Capslock & 8::Send #8
-Capslock & 9::Send #9
-Capslock & 0::Send #0
-
+; File Explorer
+^!k::Send #e
 
 #Persistent
 SetCapsLockState, AlwaysOff
