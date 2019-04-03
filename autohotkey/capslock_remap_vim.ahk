@@ -60,6 +60,10 @@ Capslock & Left::Send {Volume_Down 5}
 Capslock & Space::Send {Blind}{LWIN DownTemp}
 Capslock & Space up::Send {Blind}{LWIN Up}
 
+; Make Capslock+; -> Enter Key
+Capslock & `;::Send {Blind}{Enter DownTemp}
+Capslock & `; up::Send {Blind}{Enter Up}
+
 ; control + t -> new tab
 Capslock & t::SendInput {Ctrl Down}{t Down}
 Capslock & t up::SendInput {Ctrl Up}{t Up}
@@ -156,13 +160,15 @@ Capslock & .::SendInput {Ctrl Down}{y Down}
 Capslock & . up::SendInput {Ctrl Up}{y Up}
 
 
+;;Alan: I never use capslock and caps+space binding causes issues
+;; Also, pressing alt+CapsLock seems to replicate this behavior anyway
 ; Make Win Key + Capslock work like Capslock
-#Capslock::
-If GetKeyState("CapsLock", "T") = 1
-    SetCapsLockState, AlwaysOff
-Else 
-    SetCapsLockState, AlwaysOn
-Return
+;#Capslock::
+;If GetKeyState("CapsLock", "T") = 1
+;    SetCapsLockState, AlwaysOff
+;Else 
+;    SetCapsLockState, AlwaysOn
+;Return
 
 
 
