@@ -56,9 +56,9 @@ Capslock & Down::Send {Volume_Down 1}
 Capslock & Right::Send {Volume_Up 5}
 Capslock & Left::Send {Volume_Down 5}
 
-; Make Capslock+Space -> Windows Key
-Capslock & Space::Send {Blind}{LWIN DownTemp}
-Capslock & Space up::Send {Blind}{LWIN Up}
+; Make Capslock+Space -> Enter Key
+Capslock & Space::Send {Blind}{Enter DownTemp}
+Capslock & Space up::Send {Blind}{Enter Up}
 
 ; Make Capslock+; -> Enter Key
 Capslock & `;::Send {Blind}{Enter DownTemp}
