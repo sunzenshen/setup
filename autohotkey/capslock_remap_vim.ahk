@@ -39,11 +39,6 @@
 ; also removes problems in certain applications.
 
 
-
-; Quick launching of common apps using Ctrl+Alt+letter - Alan edit
-; File Explorer
-^!k::Send #e
-
 #Persistent
 SetCapsLockState, AlwaysOff
 
@@ -56,9 +51,9 @@ Capslock & Down::Send {Volume_Down 1}
 Capslock & Right::Send {Volume_Up 5}
 Capslock & Left::Send {Volume_Down 5}
 
-; Make Capslock+Space -> Enter Key
-Capslock & Space::Send {Blind}{Enter DownTemp}
-Capslock & Space up::Send {Blind}{Enter Up}
+; Make Capslock+Space -> WIN Key
+Capslock & Space::Send {Blind}{LWIN DownTemp}
+Capslock & Space up::Send {Blind}{LWIN Up}
 
 ; Make Capslock+; -> Enter Key
 Capslock & `;::Send {Blind}{Enter DownTemp}
@@ -67,6 +62,10 @@ Capslock & `; up::Send {Blind}{Enter Up}
 ; control + t -> new tab
 Capslock & t::SendInput {Ctrl Down}{t Down}
 Capslock & t up::SendInput {Ctrl Up}{t Up}
+
+; Quick launching of common apps using Ctrl+Alt+letter - Alan edit
+; File Explorer
+^!k::Send #e
 
 ; Interesting links that Alan is referencing from:
 ;https://www.maketecheasier.com/favorite-autohotkey-scripts/
@@ -159,20 +158,13 @@ Capslock & , up::SendInput {Ctrl Up}{z Up}
 Capslock & .::SendInput {Ctrl Down}{y Down}
 Capslock & . up::SendInput {Ctrl Up}{y Up}
 
-
-;;Alan: I never use capslock and caps+space binding causes issues
-;; Also, pressing alt+CapsLock seems to replicate this behavior anyway
 ; Make Win Key + Capslock work like Capslock
-;#Capslock::
-;If GetKeyState("CapsLock", "T") = 1
-;    SetCapsLockState, AlwaysOff
-;Else 
-;    SetCapsLockState, AlwaysOn
-;Return
-
-
-
-
+#Capslock::
+If GetKeyState("CapsLock", "T") = 1
+    SetCapsLockState, AlwaysOff
+Else 
+    SetCapsLockState, AlwaysOn
+Return
 
 ; Drag windows anywhere
 ;
