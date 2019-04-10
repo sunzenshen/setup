@@ -55,6 +55,13 @@ Capslock & Left::Send {Volume_Down 5}
 Capslock & Space::Send {Blind}{LWIN DownTemp}
 Capslock & Space up::Send {Blind}{LWIN Up}
 
+; LShift pressed alone is an Enter press
+LShift::Send {Blind}{Enter}
+
+; Make LShift+Space -> Enter Key
+LShift & Space::Send {Blind}{Enter DownTemp}
+LShift & Space up::Send {Blind}{Enter Up}
+
 ; Make Capslock+; -> Enter Key
 Capslock & `;::Send {Blind}{Enter DownTemp}
 Capslock & `; up::Send {Blind}{Enter Up}
