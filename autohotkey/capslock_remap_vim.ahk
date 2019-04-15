@@ -159,12 +159,13 @@ Capslock & .::SendInput {Ctrl Down}{y Down}
 Capslock & . up::SendInput {Ctrl Up}{y Up}
 
 ; Make Win Key + Capslock work like Capslock
-#Capslock::
-If GetKeyState("CapsLock", "T") = 1
-    SetCapsLockState, AlwaysOff
-Else 
-    SetCapsLockState, AlwaysOn
-Return
+; Alan: right now this is conflicting with cap+space=win
+;#Capslock::
+;If GetKeyState("CapsLock", "T") = 1
+;    SetCapsLockState, AlwaysOff
+;Else 
+;    SetCapsLockState, AlwaysOn
+;Return
 
 ; Drag windows anywhere
 ;
