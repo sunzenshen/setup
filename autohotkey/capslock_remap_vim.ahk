@@ -158,6 +158,38 @@ Capslock & , up::SendInput {Ctrl Up}{z Up}
 Capslock & .::SendInput {Ctrl Down}{y Down}
 Capslock & . up::SendInput {Ctrl Up}{y Up}
 
+; Capslock + everything else
+
+Capslock & 1::SendInput {Ctrl Down}{ 1 Down}
+Capslock & 1 up::SendInput {Ctrl Up}{1 Up}
+
+Capslock & 2::SendInput {Ctrl Down}{ 2 Down}
+Capslock & 2 up::SendInput {Ctrl Up}{2 Up}
+
+Capslock & 3::SendInput {Ctrl Down}{ 3 Down}
+Capslock & 3 up::SendInput {Ctrl Up}{3 Up}
+
+Capslock & 4::SendInput {Ctrl Down}{ 4 Down}
+Capslock & 4 up::SendInput {Ctrl Up}{4 Up}
+
+Capslock & 5::SendInput {Ctrl Down}{ 5 Down}
+Capslock & 5 up::SendInput {Ctrl Up}{5 Up}
+
+Capslock & 6::SendInput {Ctrl Down}{ 6 Down}
+Capslock & 6 up::SendInput {Ctrl Up}{6 Up}
+
+Capslock & 7::SendInput {Ctrl Down}{ 7 Down}
+Capslock & 7 up::SendInput {Ctrl Up}{7 Up}
+
+Capslock & 8::SendInput {Ctrl Down}{ 8 Down}
+Capslock & 8 up::SendInput {Ctrl Up}{8 Up}
+
+Capslock & 9::SendInput {Ctrl Down}{ 9 Down}
+Capslock & 9 up::SendInput {Ctrl Up}{9 Up}
+
+Capslock & 0::SendInput {Ctrl Down}{ 0 Down}
+Capslock & 0 up::SendInput {Ctrl Up}{0 Up}
+
 ; Make Win Key + Capslock work like Capslock
 ; Alan: right now this is conflicting with cap+space=win
 ;#Capslock::
