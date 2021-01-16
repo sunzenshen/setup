@@ -190,6 +190,12 @@ Capslock & 9 up::SendInput {Ctrl Up}{9 Up}
 Capslock & 0::SendInput {Ctrl Down}{ 0 Down}
 Capslock & 0 up::SendInput {Ctrl Up}{0 Up}
 
+Capslock & -::SendInput {Ctrl Down}{ - Down}
+Capslock & - up::SendInput {Ctrl Up}{- Up}
+
+Capslock & +::SendInput {Ctrl Down}{ + Down}
+Capslock & + up::SendInput {Ctrl Up}{+ Up}
+
 ; Make Win Key + Capslock work like Capslock
 ; Alan: right now this is conflicting with cap+space=win
 ;#Capslock::
