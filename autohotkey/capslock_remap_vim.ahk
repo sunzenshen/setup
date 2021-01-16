@@ -105,26 +105,37 @@ Capslock & y::SendInput {Blind}{Home Down}
 Capslock & y up::SendInput {Blind}{Home Up}
 
 
-; Capslock + asdf (select all, cut-copy-paste)
-
 Capslock & a::SendInput {Ctrl Down}{a Down}
 Capslock & a up::SendInput {Ctrl Up}{a Up}
 
-Capslock & s::SendInput {Ctrl Down}{x Down}
-Capslock & s up::SendInput {Ctrl Up}{x Up}
+; differ from danik's script and use normal keys for copy/paste
 
-Capslock & d::SendInput {Ctrl Down}{c Down}
-Capslock & d up::SendInput {Ctrl Up}{c Up}
+Capslock & s::SendInput {Ctrl Down}{s Down}
+Capslock & s up::SendInput {Ctrl Up}{s Up}
 
-Capslock & f::SendInput {Ctrl Down}{v Down}
-Capslock & f up::SendInput {Ctrl Up}{v Up}
+Capslock & d::SendInput {Ctrl Down}{d Down}
+Capslock & d up::SendInput {Ctrl Up}{d Up}
+
+Capslock & f::SendInput {Ctrl Down}{f Down}
+Capslock & f up::SendInput {Ctrl Up}{f Up}
+
+Capslock & z::SendInput {Ctrl Down}{ z Down}
+Capslock & z up::SendInput {Ctrl Up}{z Up}
+
+Capslock & x::SendInput {Ctrl Down}{ x Down}
+Capslock & x up::SendInput {Ctrl Up}{x Up}
+
+Capslock & c::SendInput {Ctrl Down}{ c Down}
+Capslock & c up::SendInput {Ctrl Up}{c Up}
+
+Capslock & v::SendInput {Ctrl Down}{ v Down}
+Capslock & v up::SendInput {Ctrl Up}{v Up}
 
 
-; Capslock + wer (close tab or window, press esc)
+; Capslock + wer (close tab or window)
 
 Capslock & w::SendInput {Ctrl down}{F4}{Ctrl up}
 Capslock & e::SendInput {Alt down}{F4}{Alt up}
-Capslock & r::SendInput {Blind}{Esc Down}
 
 
 ; Capslock + nm (insert, backspace, del)
@@ -195,6 +206,15 @@ Capslock & - up::SendInput {Ctrl Up}{- Up}
 
 Capslock & +::SendInput {Ctrl Down}{ + Down}
 Capslock & + up::SendInput {Ctrl Up}{+ Up}
+
+Capslock & r::SendInput {Ctrl Down}{ r Down}
+Capslock & r up::SendInput {Ctrl Up}{r Up}
+
+Capslock & g::SendInput {Ctrl Down}{ g Down}
+Capslock & g up::SendInput {Ctrl Up}{g Up}
+
+Capslock & p::SendInput {Ctrl Down}{ p Down}
+Capslock & p up::SendInput {Ctrl Up}{p Up}
 
 ; Make Win Key + Capslock work like Capslock
 ; Alan: right now this is conflicting with cap+space=win
