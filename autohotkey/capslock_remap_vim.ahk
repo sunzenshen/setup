@@ -43,6 +43,24 @@
 SetCapsLockState, AlwaysOff
 
 ; Alan's Mods:
+
+; Space pressed alone is a space press and is shift if held
+; https://stackoverflow.com/questions/39225521/autohotkey-script-to-send-space-when-tapped-and-shift-when-held-it-is-affecting#39226212
+#InputLevel, 10  ;set send level for the following code to 10
+$Space::
+#InputLevel  ;set it back to default value of 0 for any remaining code
+now := A_TickCount
+while GetKeyState("Space", "P") ; to find out whether space-bar is held 
+    if (A_TickCount-now > 180) ; this time is tested on asker's computer
+    {
+        SendInput {Shift Down}
+        KeyWait, Space
+        SendInput {Shift Up}
+        return
+    }
+SendInput {Space} ; if key detected to be tapped, send space as per normal   
+return
+
 ; CapsLock pressed alone is an esc press
 CapsLock::Send {Blind}{esc}
 
@@ -50,10 +68,6 @@ Capslock & Up::Send {Volume_Up 1}
 Capslock & Down::Send {Volume_Down 1}
 Capslock & Right::Send {Media_Next}
 Capslock & Left::Send {Media_Prev}
-
-; Make Capslock+Space -> WIN Key
-Capslock & Space::Send {Blind}{LWIN DownTemp}
-Capslock & Space up::Send {Blind}{LWIN Up}
 
 ; Make Capslock+; -> Enter Key
 Capslock & `;::Send {Blind}{Enter DownTemp}
