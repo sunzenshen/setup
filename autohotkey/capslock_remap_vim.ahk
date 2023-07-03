@@ -264,3 +264,7 @@ WinMove, ahk_id %EWD_MouseWin%,, EWD_WinX + EWD_MouseX - EWD_MouseStartX, EWD_Wi
 EWD_MouseStartX := EWD_MouseX  ; Update for the next timer-call to this subroutine.
 EWD_MouseStartY := EWD_MouseY
 return
+
+; don't really use back/front on mouse that much
+XButton1::RButton
+XButton2::MButton
