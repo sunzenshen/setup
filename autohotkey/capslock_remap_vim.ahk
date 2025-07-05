@@ -10,17 +10,24 @@
 ; - Deactivates capslock for normal (accidental) use.
 ; - Hold Capslock and drag anywhere in a window to move it (not just the title bar).
 ; - Access the following functions when pressing Capslock: 
-;     Cursor keys           - H, J, K, L (Vim-style)
-;     Home, PgDn, PgUp, End - Y, U, I, O (above HJKL)
-;     Backspace and Del     - N, M
-;     Insert                - B
-;     Select all            - A
-;     Cut, copy, paste      - S, D, F
-;     Close tab, window     - W, E
-;     Esc                   - R
-;     Next, previous tab    - Tab, Q
-;     Undo, redo            - , and .
-;  
+;     Cursor keys           - H, J, K, L (Vim-style)
+;     Home, End             - , and . (modified from original)
+;     PgDn, PgUp            - D, F (modified from original)
+;     Backspace and Del     - N, M
+;     Select All            - (Removed to make way for Tab Nav)
+;     Cut, copy, paste      - (Cut/Copy remain, Paste removed to make way for Word Select)
+;     Close tab, window     - W, Q (Q is now Close Window)
+;     Esc                   - R
+;     Next, previous tab    - S, A (modified from original)
+;     Undo, redo            - (Removed to make way for Home/End)
+;     Tiling                - Y, U, I, O (New)
+;     Virtual Desktops      - [, ] (New)
+;     Task View             - \ (New)
+;     Task Manager          - T (New)
+;     Alacritty Mode        - / (New)
+;     Fullscreen            - ' (New)
+;     Word Navigation       - B, E, V (New/Modified)
+;  
 ; To use capslock as you normally would, you can press WinKey + Capslock
 
 
@@ -30,7 +37,7 @@
 ; Changes: 
 ; - Does not need register remapping of AppsKey using SharpKeys.
 ; - Uses Vim style navigation keys (standard and works better
-;   across different language layouts)
+;   across different language layouts)
 ; - PgUp, PgDn, Home, End also changed to be symmetrical with Vim layout
 ; - Added more hotkeys for insert, undo, redo etc.
 ;
@@ -90,84 +97,80 @@ Capslock & l::Send {Blind}{Right DownTemp}
 Capslock & l up::Send {Blind}{Right Up}
 
 
-; Capslock + yuio (pgdown, pgup, home, end)
+; Capslock + y, u, i, o (Windows Tiling: Win+Left, Win+Down, Win+Up, Win+Right) - Modified from original PgDn, PgUp, Home, End
+Capslock & y::Send {Blind}{LWIN Down}{Left Down}
+Capslock & y up::Send {Blind}{LWIN Up}{Left Up}
 
-Capslock & u::SendInput {Blind}{PgDn Down}
-Capslock & u up::SendInput {Blind}{PgDn Up}
+Capslock & u::Send {Blind}{LWIN Down}{Down Down}
+Capslock & u up::Send {Blind}{LWIN Up}{Down Up}
 
-Capslock & i::SendInput {Blind}{PgUp Down}
-Capslock & i up::SendInput {Blind}{PgUp Up}
+Capslock & i::Send {Blind}{LWIN Down}{Up Down}
+Capslock & i up::Send {Blind}{LWIN Up}{Up Up}
 
-Capslock & o::SendInput {Blind}{End Down}
-Capslock & o up::SendInput {Blind}{End Up}
-
-Capslock & y::SendInput {Blind}{Home Down}
-Capslock & y up::SendInput {Blind}{Home Up}
+Capslock & o::Send {Blind}{LWIN Down}{Right Down}
+Capslock & o up::Send {Blind}{LWIN Up}{Right Up}
 
 
-Capslock & a::SendInput {Ctrl Down}{a Down}
-Capslock & a up::SendInput {Ctrl Up}{a Up}
+; Capslock + d, f (PgDn, PgUp) - Modified from original Ctrl+d, Ctrl+f
+Capslock & d::SendInput {Blind}{PgDn Down}
+Capslock & d up::SendInput {Blind}{PgDn Up}
 
-; differ from danik's script and use normal keys for copy/paste
+Capslock & f::SendInput {Blind}{PgUp Down}
+Capslock & f up::SendInput {Blind}{PgUp Up}
 
-Capslock & s::SendInput {Ctrl Down}{s Down}
-Capslock & s up::SendInput {Ctrl Up}{s Up}
+; Capslock + a, s (Ctrl+PgUp, Ctrl+PgDn for Tab Navigation) - Modified from original Ctrl+a, Ctrl+s
+Capslock & a::SendInput {Ctrl Down}{PgUp Down}
+Capslock & a up::SendInput {Ctrl Up}{PgUp Up}
 
-Capslock & d::SendInput {Ctrl Down}{d Down}
-Capslock & d up::SendInput {Ctrl Up}{d Up}
+Capslock & s::SendInput {Ctrl Down}{PgDn Down}
+Capslock & s up::SendInput {Ctrl Up}{PgDn Up}
 
-Capslock & f::SendInput {Ctrl Down}{f Down}
-Capslock & f up::SendInput {Ctrl Up}{f Up}
-
-Capslock & z::SendInput {Ctrl Down}{ z Down}
-Capslock & z up::SendInput {Ctrl Up}{z Up}
-
-Capslock & x::SendInput {Ctrl Down}{ x Down}
-Capslock & x up::SendInput {Ctrl Up}{x Up}
-
-Capslock & c::SendInput {Ctrl Down}{ c Down}
+; Capslock + c (Copy) - Retained Ctrl+c
+Capslock & c::SendInput {Ctrl Down}{c Down}
 Capslock & c up::SendInput {Ctrl Up}{c Up}
 
-Capslock & v::SendInput {Ctrl Down}{ v Down}
-Capslock & v up::SendInput {Ctrl Up}{v Up}
+; Capslock + x (Cut) - Retained Ctrl+x
+Capslock & x::SendInput {Ctrl Down}{x Down}
+Capslock & x up::SendInput {Ctrl Up}{x Up}
 
-
-; Capslock + wer (close tab or window)
-
+; Capslock + w (Close Tab Ctrl+F4)
 Capslock & w::SendInput {Ctrl down}{F4}{Ctrl up}
-Capslock & e::SendInput {Alt down}{F4}{Alt up}
+
+; Capslock + q (Close Window Alt+F4) - Modified from original Ctrl+Tab
+Capslock & q::SendInput {Alt down}{F4}{Alt up}
 
 
-; Capslock + nm (insert, backspace, del)
-
-Capslock & b::SendInput {Blind}{Insert Down}
-Capslock & m::SendInput {Blind}{Del Down}
+; Capslock + n, m (backspace, del) - Retained original behavior
 Capslock & n::SendInput {Blind}{BS Down}
-Capslock & BS::SendInput {Blind}{BS Down}
+Capslock & n up::SendInput {Blind}{BS Up} ; Ensure release for BS too
+Capslock & m::SendInput {Blind}{Del Down}
+Capslock & m up::SendInput {Blind}{Del Up} ; Ensure release for Del too
 
 
-; Make Capslock & Enter equivalent to Control+Enter
+; Capslock & BS::SendInput {Blind}{BS Down} ; This line is redundant if using Capslock & n for BS
+
+
+; Make Capslock & Enter equivalent to Control+Enter - Retained original behavior
 Capslock & Enter::SendInput {Ctrl down}{Enter}{Ctrl up}
 
 
-; Make Capslock & Alt Equivalent to Control+Alt
+; Make Capslock & Alt Equivalent to Control+Alt - Retained original behavior
 !Capslock::SendInput {Ctrl down}{Alt Down}
 !Capslock up::SendInput {Ctrl up}{Alt up}
 
 
-; Capslock + TAB/q (prev/next tab)
+; Capslock + Tab (Previous Tab Ctrl+Shift+Tab) - Removed to make way for Ctrl+PgUp/Dn on a/s
+; Capslock & Tab::SendInput {Ctrl Down}{Shift Down}{Tab Down}
+; Capslock & Tab up::SendInput {Ctrl Up}{Shift Up}{Tab Up}
 
-Capslock & q::SendInput {Ctrl Down}{Tab Down}
-Capslock & q up::SendInput {Ctrl Up}{Tab Up}
-Capslock & Tab::SendInput {Ctrl Down}{Shift Down}{Tab Down}
-Capslock & Tab up::SendInput {Ctrl Up}{Shift Up}{Tab Up}
 
-; Capslock + ,/. (undo/redo)
+; Capslock + ,/. (Home/End) - Modified from original undo/redo
+Capslock & ,::SendInput {Blind}{Home Down}
+Capslock & , up::SendInput {Blind}{Home Up}
 
-Capslock & ,::SendInput {Ctrl Down}{z Down}
-Capslock & , up::SendInput {Ctrl Up}{z Up}
-Capslock & .::SendInput {Ctrl Down}{y Down}
-Capslock & . up::SendInput {Ctrl Up}{y Up}
+Capslock & .::SendInput {Blind}{End Down}
+Capslock & . up::SendInput {Blind}{End Up}
+
 
 ; Capslock + everything else
 
@@ -215,6 +218,41 @@ Capslock & g up::SendInput {Ctrl Up}{g Up}
 
 Capslock & p::SendInput {Ctrl Down}{ p Down}
 Capslock & p up::SendInput {Ctrl Up}{p Up}
+
+
+; New Mappings to match keyd configuration behaviors
+
+; Capslock + [ and ] (Virtual Desktops: Ctrl+Win+Left/Right)
+Capslock & [::Send {Blind}{Ctrl Down}{LWIN Down}{Left Down}
+Capslock & [ up::Send {Blind}{Ctrl Up}{LWIN Up}{Left Up}
+
+Capslock & ]::Send {Blind}{Ctrl Down}{LWIN Down}{Right Down}
+Capslock & ] up::Send {Blind}{Ctrl Up}{LWIN Up}{Right Up}
+
+; Capslock + \ (Show All Desktops/Task View: Win+Tab)
+Capslock & \::Send {Blind}{LWIN Down}{Tab Down}
+Capslock & \ up::Send {Blind}{LWIN Up}{Tab Up}
+
+; Capslock + / (Alacritty Terminal Mode: Ctrl+Shift+Space)
+Capslock & /::SendInput {Ctrl Down}{Shift Down}{Space Down}
+Capslock & / up::SendInput {Ctrl Up}{Shift Up}{Space Up}
+
+; Capslock + ' (Fullscreen: F11)
+Capslock & '::SendInput {F11 Down}
+Capslock & ' up::SendInput {F11 Up}
+
+; Capslock + b (Backward Word: Ctrl+Left) - Modified from original Insert
+Capslock & b::SendInput {Ctrl Down}{Left Down}
+Capslock & b up::SendInput {Ctrl Up}{Left Up}
+
+; Capslock + e (Select Backwards Word: Ctrl+Shift+Left) - Modified from original Close Window
+Capslock & e::SendInput {Ctrl Down}{Shift Down}{Left Down}
+Capslock & e up::SendInput {Ctrl Up}{Shift Up}{Left Up}
+
+; Capslock + v (Select Backwards Word: Ctrl+Shift+Left) - Modified from original Paste
+Capslock & v::SendInput {Ctrl Down}{Shift Down}{Left Down}
+Capslock & v up::SendInput {Ctrl Up}{Shift Up}{Left Up}
+
 
 ; Make Win Key + Capslock work like Capslock
 ; Alan: right now this is conflicting with cap+space=win
