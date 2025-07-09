@@ -105,6 +105,19 @@ Capslock & l::Send {Blind}{Right DownTemp}
 Capslock & l up::Send {Blind}{Right Up}
 
 
+; Alt + hjkl (Windows Tiling: Win+Left, Win+Down, Win+Up, Win+Right)
+Alt & h::Send {Blind}{AltUp}}{LWIN Down}{Left Down}
+Alt & h up::Send {Blind}{AltUp}{LWIN Up}{Left Up}
+Alt & j::Send {Blind}{AltUp}{LWIN Down}{Down Down}
+Alt & j up::Send {Blind}{AltUp}{LWIN Up}{Down Up}
+Alt & k::Send {Blind}{AltUp}{LWIN Down}{Up Down}
+Alt & k up::Send {Blind}{AltUp}{LWIN Up}{Up Up}
+Alt & l::Send {Blind}{AltUp}{LWIN Down}{Right Down}
+Alt & l up::Send {Blind}{AltUp}{LWIN Up}{Right Up}
+; more jank i3 emulation
+Alt & f::Send {Blind}{AltUp}{LWIN Down}{F11 Down}
+Alt & f up::Send {Blind}{AltUp}{LWIN Up}{F11 Up}
+
 ; Capslock + d, u (PgDn, PgUp)
 Capslock & d::SendInput {Blind}{PgDn Down}
 Capslock & d up::SendInput {Blind}{PgDn Up}
@@ -155,14 +168,9 @@ Capslock & [ up::Send {Blind}{Ctrl Up}{LWIN Up}{Left Up}
 Capslock & ]::Send {Blind}{Ctrl Down}{LWIN Down}{Right Down}
 Capslock & ] up::Send {Blind}{Ctrl Up}{LWIN Up}{Right Up}
 
-; Capslock + \ (Show All Desktops/Task View: Win+Tab)
-Capslock & \::Send {Blind}{LWIN Down}{Tab Down}
-Capslock & \ up::Send {Blind}{LWIN Up}{Tab Up}
-
-; Capslock + ' (Virtual Desktop: Ctrl+Win+Down)
-Capslock & '::SendInput {Ctrl Down}{LWIN Down}{Down Down}
-Capslock & ' up::SendInput {Ctrl Up}{LWIN Up}{Down Up}
-
+; Capslock + ' (Show All Desktops/Task View: Win+Tab)
+Capslock & '::Send {Blind}{LWIN Down}{Tab Down}
+Capslock & ' up::Send {Blind}{LWIN Up}{Tab Up}
 
 ; Make Capslock & Alt Equivalent to Control+Alt
 !Capslock::SendInput {Ctrl down}{Alt Down}
@@ -181,22 +189,22 @@ MouseGetPos, EWD_MouseStartX, EWD_MouseStartY, EWD_MouseWin
 WinGetPos, EWD_OriginalPosX, EWD_OriginalPosY,,, ahk_id %EWD_MouseWin%
 WinGet, EWD_WinState, MinMax, ahk_id %EWD_MouseWin% 
 if EWD_WinState = 0  ; Only if the window isn't maximized 
-    SetTimer, EWD_WatchMouse, 10 ; Track the mouse as the user drags it.
+    SetTimer, EWD_WatchMouse, 10 ; Track the mouse as the user drags it.
 return
 
 EWD_WatchMouse:
 GetKeyState, EWD_LButtonState, LButton, P
 if EWD_LButtonState = U  ; Button has been released, so drag is complete.
 {
-    SetTimer, EWD_WatchMouse, off
-    return
+    SetTimer, EWD_WatchMouse, off
+    return
 }
 GetKeyState, EWD_EscapeState, Escape, P
 if EWD_EscapeState = D  ; Escape has been pressed, so drag is cancelled.
 {
-    SetTimer, EWD_WatchMouse, off
-    WinMove, ahk_id %EWD_MouseWin%,, %EWD_OriginalPosX%, %EWD_OriginalPosY%
-    return
+    SetTimer, EWD_WatchMouse, off
+    WinMove, ahk_id %EWD_MouseWin%,, %EWD_OriginalPosX%, %EWD_OriginalPosY%
+    return
 }
 ; Otherwise, reposition the window to match the change in mouse coordinates
 ; caused by the user having dragged the mouse:
