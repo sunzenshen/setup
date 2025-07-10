@@ -182,13 +182,9 @@ Capslock & [ up::Send {Blind}{Ctrl Up}{LWIN Up}{Left Up}
 Capslock & ]::Send {Blind}{Ctrl Down}{LWIN Down}{Right Down}
 Capslock & ] up::Send {Blind}{Ctrl Up}{LWIN Up}{Right Up}
 
-; Capslock + ' (Virtual Desktop: Ctrl+Win+Down)
-Capslock & '::SendInput {Ctrl Down}{LWIN Down}{Down Down}
-Capslock & ' up::SendInput {Ctrl Up}{LWIN Up}{Down Up}
-
-; Capslock + \ (Task View: Win+Tab)
-Capslock & \::Send {Blind}{LWIN Down}{Tab Down}
-Capslock & \ up::Send {Blind}{LWIN Up}{Tab Up}
+; Capslock + ' (Task View: Win+Tab)
+Capslock & '::Send {Blind}{LWIN Down}{Tab Down}
+Capslock & ' up::Send {Blind}{LWIN Up}{Tab Up}
 
 
 ; Make Capslock & Alt Equivalent to Control+Alt
