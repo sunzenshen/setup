@@ -8,8 +8,8 @@
 ; - Deactivates capslock for normal (accidental) use.
 ; - Hold Capslock and drag anywhere in a window to move it (not just the title bar).
 ; - Access the following functions when pressing Capslock: 
-;     - Default behavior: Capslock + <key> sends Ctrl + <key>
-;     - Overrides for specific keys to match keyd's ctrl_vim layer:
+;     - Default behavior: Capslock + <key> sends Ctrl + <key> (explicitly mapped for stability)
+;     - Overrides for specific keys:
 ;         Cursor keys           - H, J, K, L (Vim-style)
 ;         PgDn, PgUp            - D, U
 ;         Backspace and Del     - N, M
@@ -22,6 +22,7 @@
 ;         Enter Key             - ;
 ;         Virtual Desktops      - [ (Ctrl+Win+Left), ] (Ctrl+Win+Right), ' (Ctrl+Win+Down)
 ;         Alacritty Mode        - / (Ctrl+Shift+Space)
+;         Task View             - \ (Win+Tab)
 ;  
 ; To use capslock as you normally would, you can press WinKey + Capslock
 
@@ -48,25 +49,52 @@ SetCapsLockState, AlwaysOff
 ; CapsLock pressed alone is an esc press
 CapsLock::Send {Blind}{esc}
 
-; Default behavior: Capslock + <key> sends Ctrl + <key>
-; This catches all keys not explicitly defined below.
-; Ensure this is before specific remappings.
+; --- Default behavior: Capslock + <key> sends Ctrl + <key> (Explicitly mapped) ---
+; This section manually maps common keys to Ctrl+Key when Capslock is held.
+; This replaces the previous generic #If block for better stability.
+
 #If GetKeyState("CapsLock", "P")
-*::
-    ; Exclude specific keys that have dedicated Capslock hotkeys below
-    ; Or keys that are part of the Capslock combo itself (like Space, ;, etc.)
-    If (A_ThisHotkey contains "Capslock & " AND A_ThisHotkey not contains "Capslock & Space"
-        AND A_ThisHotkey not contains "Capslock & `;" AND A_ThisHotkey not contains "Capslock & LButton")
-    {
-        ; Extract the key name (e.g., "a" from "Capslock & a")
-        Key := SubStr(A_ThisHotkey, InStr(A_ThisHotkey, "& ") + 2)
-        ; Send Ctrl + that key. {Blind} prevents interference with other hotkeys.
-        Send {Blind}{Ctrl Down}%Key%{Ctrl Up}
-    }
-Return
+; Letters (a-z), excluding those with specific Capslock overrides below
+Capslock & a::Send ^a
+Capslock & b::Send ^b
+Capslock & c::Send ^c
+Capslock & f::Send ^f
+Capslock & g::Send ^g
+; h, j, k, l are overridden below for Vim navigation
+; d, u are overridden below for PgDn/PgUp
+; e, w, q is for system functions
+Capslock & p::Send ^p
+Capslock & r::Send ^r
+Capslock & s::Send ^s
+Capslock & t::Send ^t
+Capslock & v::Send ^v
+Capslock & x::Send ^x
+Capslock & y::Send ^y
+Capslock & z::Send ^z
+Capslock & i::Send ^i
+Capslock & o::Send ^o
+; n, m are for Backspace/Delete
+
+; Numbers (0-9) - Capslock+Number sends Ctrl+Number
+Capslock & 0::Send ^0
+Capslock & 1::Send ^1
+Capslock & 2::Send ^2
+Capslock & 3::Send ^3
+Capslock & 4::Send ^4
+Capslock & 5::Send ^5
+Capslock & 6::Send ^6
+Capslock & 7::Send ^7
+Capslock & 8::Send ^8
+Capslock & 9::Send ^9
+
+; Other common symbols
+Capslock & -::Send ^-
+Capslock & =::Send ^=
+; comma, period, bracket, backslash, slash, apostrophe are overridden below
 #If ; Turn off #If for subsequent code blocks
 
-; Media Keys (Retained existing)
+
+; Media Keys
 Capslock & Up::Send {Volume_Up 1}
 Capslock & Down::Send {Volume_Down 1}
 Capslock & Right::Send {Media_Next}
@@ -81,7 +109,6 @@ Capslock & `;::Send {Blind}{Enter DownTemp}
 Capslock & `; up::Send {Blind}{Enter Up}
 
 
-
 ; Interesting links that Alan is referencing from:
 ;https://www.maketecheasier.com/favorite-autohotkey-scripts/
 ; explanation for {Blind} https://autohotkey.com/docs/commands/Send.htm#blind
@@ -89,9 +116,9 @@ Capslock & `; up::Send {Blind}{Enter Up}
 ; How to send WIN + ?  https://superuser.com/questions/402244/how-to-simulate-wind-in-autohotkey
 
 
+; --- Specific Capslock Overrides (Matching keyd ctrl_vim) ---
 
 ; Capslock + hjkl (left, down, up, right)
-
 Capslock & h::Send {Blind}{Left DownTemp}
 Capslock & h up::Send {Blind}{Left Up}
 
@@ -104,19 +131,6 @@ Capslock & k up::Send {Blind}{Up Up}
 Capslock & l::Send {Blind}{Right DownTemp}
 Capslock & l up::Send {Blind}{Right Up}
 
-
-; Alt + hjkl (Windows Tiling: Win+Left, Win+Down, Win+Up, Win+Right)
-Alt & h::Send {Blind}{AltUp}}{LWIN Down}{Left Down}
-Alt & h up::Send {Blind}{AltUp}{LWIN Up}{Left Up}
-Alt & j::Send {Blind}{AltUp}{LWIN Down}{Down Down}
-Alt & j up::Send {Blind}{AltUp}{LWIN Up}{Down Up}
-Alt & k::Send {Blind}{AltUp}{LWIN Down}{Up Down}
-Alt & k up::Send {Blind}{AltUp}{LWIN Up}{Up Up}
-Alt & l::Send {Blind}{AltUp}{LWIN Down}{Right Down}
-Alt & l up::Send {Blind}{AltUp}{LWIN Up}{Right Up}
-; more jank i3 emulation
-Alt & f::Send {Blind}{AltUp}{LWIN Down}{F11 Down}
-Alt & f up::Send {Blind}{AltUp}{LWIN Up}{F11 Up}
 
 ; Capslock + d, u (PgDn, PgUp)
 Capslock & d::SendInput {Blind}{PgDn Down}
@@ -157,7 +171,7 @@ Capslock & q::SendInput {Ctrl Down}{PgDn Down}
 Capslock & q up::SendInput {Ctrl Up}{PgDn Up}
 
 
-; Capslock + / (Alacritty Terminal Mode: Ctrl+Shift+Space) - Retained existing override
+; Capslock + / (Alacritty Terminal Mode: Ctrl+Shift+Space)
 Capslock & /::SendInput {Ctrl Down}{Shift Down}{Space Down}
 Capslock & / up::SendInput {Ctrl Up}{Shift Up}{Space Up}
 
@@ -168,55 +182,54 @@ Capslock & [ up::Send {Blind}{Ctrl Up}{LWIN Up}{Left Up}
 Capslock & ]::Send {Blind}{Ctrl Down}{LWIN Down}{Right Down}
 Capslock & ] up::Send {Blind}{Ctrl Up}{LWIN Up}{Right Up}
 
-; Capslock + ' (Show All Desktops/Task View: Win+Tab)
-Capslock & '::Send {Blind}{LWIN Down}{Tab Down}
-Capslock & ' up::Send {Blind}{LWIN Up}{Tab Up}
+; Capslock + ' (Virtual Desktop: Ctrl+Win+Down)
+Capslock & '::SendInput {Ctrl Down}{LWIN Down}{Down Down}
+Capslock & ' up::SendInput {Ctrl Up}{LWIN Up}{Down Up}
+
+; Capslock + \ (Task View: Win+Tab)
+Capslock & \::Send {Blind}{LWIN Down}{Tab Down}
+Capslock & \ up::Send {Blind}{LWIN Up}{Tab Up}
+
 
 ; Make Capslock & Alt Equivalent to Control+Alt
 !Capslock::SendInput {Ctrl down}{Alt Down}
 !Capslock up::SendInput {Ctrl up}{Alt up}
 
 
-; Drag windows anywhere
-;
-; This script modified from the original: http://www.autohotkey.com/docs/scripts/EasyWindowDrag.htm
-; by The How-To Geek
-; http://www.howtogeek.com 
+; --- Alt Keybinds ---
 
-Capslock & LButton::
-CoordMode, Mouse  ; Switch to screen/absolute coordinates.
-MouseGetPos, EWD_MouseStartX, EWD_MouseStartY, EWD_MouseWin
-WinGetPos, EWD_OriginalPosX, EWD_OriginalPosY,,, ahk_id %EWD_MouseWin%
-WinGet, EWD_WinState, MinMax, ahk_id %EWD_MouseWin% 
-if EWD_WinState = 0  ; Only if the window isn't maximized 
-    SetTimer, EWD_WatchMouse, 10 ; Track the mouse as the user drags it.
-return
+; Alt + hjkl (Windows Tiling: Win+Left, Win+Down, Win+Up, Win+Right)
+Alt & h::Send {Blind}{AltUp}{LWIN Down}{Left Down}
+Alt & h up::Send {Blind}{AltUp}{LWIN Up}{Left Up}
+Alt & j::Send {Blind}{AltUp}{LWIN Down}{Down Down}
+Alt & j up::Send {Blind}{AltUp}{LWIN Up}{Down Up}
+Alt & k::Send {Blind}{AltUp}{LWIN Down}{Up Down}
+Alt & k up::Send {Blind}{AltUp}{LWIN Up}{Up Up}
+Alt & l::Send {Blind}{AltUp}{LWIN Down}{Right Down}
+Alt & l up::Send {Blind}{AltUp}{LWIN Up}{Right Up}
 
-EWD_WatchMouse:
-GetKeyState, EWD_LButtonState, LButton, P
-if EWD_LButtonState = U  ; Button has been released, so drag is complete.
-{
-    SetTimer, EWD_WatchMouse, off
-    return
-}
-GetKeyState, EWD_EscapeState, Escape, P
-if EWD_EscapeState = D  ; Escape has been pressed, so drag is cancelled.
-{
-    SetTimer, EWD_WatchMouse, off
-    WinMove, ahk_id %EWD_MouseWin%,, %EWD_OriginalPosX%, %EWD_OriginalPosY%
-    return
-}
-; Otherwise, reposition the window to match the change in mouse coordinates
-; caused by the user having dragged the mouse:
-CoordMode, Mouse
-MouseGetPos, EWD_MouseX, EWD_MouseY
-WinGetPos, EWD_WinX, EWD_WinY,,, ahk_id %EWD_MouseWin%
-SetWinDelay, -1   ; Makes the below move faster/smoother.
-WinMove, ahk_id %EWD_MouseWin%,, EWD_WinX + EWD_MouseX - EWD_MouseStartX, EWD_WinY + EWD_MouseY - EWD_MouseStartY
-EWD_MouseStartX := EWD_MouseX  ; Update for the next timer-call to this subroutine.
-EWD_MouseStartY := EWD_MouseY
-return
+; Alt + f (Fullscreen: F11)
+Alt & f::Send {Blind}{AltUp}{F11 Down}
+Alt & f up::Send {Blind}{AltUp}{F11 Up}
 
-; don't really use back/front on mouse that much
+; Alt + ' (Task View: Win+Tab)
+Alt & '::Send {Blind}{LWIN Down}{Tab Down}
+Alt & ' up::Send {Blind}{LWIN Up}{Tab Up}
+
+; Make Alt+; -> Enter Key
+Alt & `;::Send {Blind}{Enter DownTemp}
+Alt & `; up::Send {Blind}{Enter Up}
+
+; Alt + 1234 (Launch Taskbar Apps: Win+1234)
+Alt & 1::Send {Blind}{LWIN Down}{1 Down}
+Alt & 1 up::Send {Blind}{LWIN Up}{1 Up}
+Alt & 2::Send {Blind}{LWIN Down}{2 Down}
+Alt & 2 up::Send {Blind}{LWIN Up}{2 Up}
+Alt & 3::Send {Blind}{LWIN Down}{3 Down}
+Alt & 3 up::Send {Blind}{LWIN Up}{3 Up}
+Alt & 4::Send {Blind}{LWIN Down}{4 Down}
+Alt & 4 up::Send {Blind}{LWIN Up}{4 Up}
+
+; Mouse buttons (retained from original base)
 XButton1::RButton
 XButton2::MButton
