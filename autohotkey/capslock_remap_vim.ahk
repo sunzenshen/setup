@@ -75,17 +75,17 @@ Capslock & i::Send ^i
 Capslock & o::Send ^o
 ; n, m are for Backspace/Delete
 
-; Numbers (0-9) - Capslock+Number sends Ctrl+Number
-Capslock & 0::Send ^0
-Capslock & 1::Send ^1
-Capslock & 2::Send ^2
-Capslock & 3::Send ^3
-Capslock & 4::Send ^4
-Capslock & 5::Send ^5
-Capslock & 6::Send ^6
-Capslock & 7::Send ^7
-Capslock & 8::Send ^8
-Capslock & 9::Send ^9
+; Numbers (0-9) - Capslock+Number sends Win+Number
+Capslock & 0::Send #0
+Capslock & 1::Send #1
+Capslock & 2::Send #2
+Capslock & 3::Send #3
+Capslock & 4::Send #4
+Capslock & 5::Send #5
+Capslock & 6::Send #6
+Capslock & 7::Send #7
+Capslock & 8::Send #8
+Capslock & 9::Send #9
 
 ; Other common symbols
 Capslock & -::Send ^-
@@ -215,16 +215,6 @@ Alt & ' up::Send {Blind}{LWIN Up}{Tab Up}
 ; Make Alt+; -> Enter Key
 Alt & `;::Send {Blind}{Enter DownTemp}
 Alt & `; up::Send {Blind}{Enter Up}
-
-; Alt + 1234 (Launch Taskbar Apps: Win+1234)
-Alt & 1::Send {Blind}{LWIN Down}{1 Down}
-Alt & 1 up::Send {Blind}{LWIN Up}{1 Up}
-Alt & 2::Send {Blind}{LWIN Down}{2 Down}
-Alt & 2 up::Send {Blind}{LWIN Up}{2 Up}
-Alt & 3::Send {Blind}{LWIN Down}{3 Down}
-Alt & 3 up::Send {Blind}{LWIN Up}{3 Up}
-Alt & 4::Send {Blind}{LWIN Down}{4 Down}
-Alt & 4 up::Send {Blind}{LWIN Up}{4 Up}
 
 ; Mouse buttons (retained from original base)
 XButton1::RButton
