@@ -18,7 +18,7 @@
 ;         Close Tab             - W (Ctrl+F4)
 ;         Next/Previous Tab     - Tab (Ctrl+PgUp), Q (Ctrl+PgDn)
 ;         Esc                   - Capslock (tap)
-;         Win Key               - Space
+;         Ctrl + Space          - Space
 ;         Enter Key             - ;
 ;         Virtual Desktops      - [ (Ctrl+Win+Left), ] (Ctrl+Win+Right), ' (Ctrl+Win+Down)
 ;         Alacritty Mode        - / (Ctrl+Shift+Space)
@@ -100,9 +100,9 @@ Capslock & Down::Send {Volume_Down 1}
 Capslock & Right::Send {Media_Next}
 Capslock & Left::Send {Media_Prev}
 
-; Make Capslock+Space -> WIN Key
-Capslock & Space::Send {Blind}{LWIN DownTemp}
-Capslock & Space up::Send {Blind}{LWIN Up}
+; Make Capslock+Space -> Ctrl+Space
+Capslock & Space::Send {Blind}{LCtrl DownTemp}{Space DownTemp}
+Capslock & Space up::Send {Blind}{LCtrl Up}{Space Up}
 
 ; Make Capslock+; -> Enter Key
 Capslock & `;::Send {Blind}{Enter DownTemp}
