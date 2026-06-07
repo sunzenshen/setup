@@ -49,19 +49,6 @@ SetCapsLockState, AlwaysOff
 ; CapsLock pressed alone is an esc press
 CapsLock::Send {Blind}{esc}
 
-; Tab as Control when held, Tab when tapped
-*Tab::
-    Send {Blind}{LCtrl Down}
-return
-
-*Tab up::
-    Send {Blind}{LCtrl Up}
-    if (A_PriorKey = "Tab")
-    {
-        Send {Blind}{Tab}
-    }
-return
-
 ; --- Default behavior: Capslock + <key> sends Ctrl + <key> (Explicitly mapped) ---
 ; This section manually maps common keys to Ctrl+Key when Capslock is held.
 ; This replaces the previous generic #If block for better stability.
@@ -205,6 +192,29 @@ Capslock & ' up::Send {Blind}{LWIN Up}{Tab Up}
 !Capslock up::SendInput {Ctrl up}{Alt up}
 
 
+; --- Alt Keybinds ---
+
+; Alt + hjkl (Windows Tiling: Win+Left, Win+Down, Win+Up, Win+Right)
+Alt & h::Send {Blind}{AltUp}{LWIN Down}{Left Down}
+Alt & h up::Send {Blind}{AltUp}{LWIN Up}{Left Up}
+Alt & j::Send {Blind}{AltUp}{LWIN Down}{Down Down}
+Alt & j up::Send {Blind}{AltUp}{LWIN Up}{Down Up}
+Alt & k::Send {Blind}{AltUp}{LWIN Down}{Up Down}
+Alt & k up::Send {Blind}{AltUp}{LWIN Up}{Up Up}
+Alt & l::Send {Blind}{AltUp}{LWIN Down}{Right Down}
+Alt & l up::Send {Blind}{AltUp}{LWIN Up}{Right Up}
+
+; Alt + f (Fullscreen: F11)
+Alt & f::Send {Blind}{AltUp}{F11 Down}
+Alt & f up::Send {Blind}{AltUp}{F11 Up}
+
+; Alt + ' (Task View: Win+Tab)
+Alt & '::Send {Blind}{LWIN Down}{Tab Down}
+Alt & ' up::Send {Blind}{LWIN Up}{Tab Up}
+
+; Make Alt+; -> Enter Key
+Alt & `;::Send {Blind}{Enter DownTemp}
+Alt & `; up::Send {Blind}{Enter Up}
 
 ; Mouse buttons (retained from original base)
 XButton1::RButton
