@@ -1,308 +1,424 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Fresh-install bootstrap for Linux Mint (22.x) and Parrot OS (Debian-based).
+#
+# Usage: ./sh/bootstrap.sh [--no-upgrade]   (run as your normal user, NOT with sudo)
+#
+# Re-runnable: each step checks first and only installs or changes what is missing
+# or out of date, then prints a summary of what changed.
+# By default it also upgrades system packages, Neovim and Rust so the machine
+# always matches the latest version of this script.
+# --no-upgrade: only install what is missing (quick, no upgrades or autoremove).
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
+set -Eeuo pipefail
+trap 'echo "ERROR: bootstrap failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
-echo "Starting bootstrap process..."
-
-# --- Setup Cache Directory ---
+# --- Settings --------------------------------------------------------------
 CACHE_DIR="$HOME/cache_bootstrap"
-echo "Ensuring cache directory exists: $CACHE_DIR"
-mkdir -p "$CACHE_DIR"
+KEYD_VERSION="v2.6.0"   # pinned release tag; bump deliberately
+REPO_RAW_URL="https://raw.githubusercontent.com/sunzenshen/setup/master"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+UPGRADE=1
+CHANGES=()
 
-# --- System Updates ---
-echo "Updating package lists..."
-sudo apt update
+# Packages wanted everywhere. Missing ones are reported and skipped, not fatal.
+COMMON_PACKAGES=(
+    ca-certificates git curl tar gzip unzip build-essential
+    zbar-tools v4l-utils alacritty cinnamon timeshift flatpak xinput
+    qemu-system-x86 libvirt-daemon-system libvirt-clients bridge-utils
+    virt-manager qemu-guest-agent spice-vdagent
+)
+# Pentest tools: only on Parrot (they are in its repos, not Mint's).
+PARROT_ONLY_PACKAGES=(burpsuite zaproxy)
+# apt package -> Flathub fallback when the distro repos don't carry it.
+declare -A APT_OR_FLATPAK=(
+    [signal-desktop]=org.signal.Signal
+)
 
-echo "Upgrading installed packages..."
-sudo apt upgrade -y
+# --- Helpers ---------------------------------------------------------------
+log()  { printf '\n==> %s\n' "$*"; }
+info() { printf '    %s\n' "$*"; }
+warn() { printf 'WARNING: %s\n' "$*" >&2; }
+die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+changed() { CHANGES+=("$*"); info "$*"; }
 
-# --- Application Installation ---
-echo "Installing common applications..."
+apt_get() { sudo DEBIAN_FRONTEND=noninteractive apt-get -y "$@"; }
 
-# Install multiple packages with a single apt install command for efficiency
-# Includes tools for virtualization, security, development, and general use
-# 'build-essential' is crucial here for compiling applications like keyd later.
-sudo apt install -y \
-    zbar-tools \
-    cinnamon \
-    alacritty \
-    signal-desktop \
-    git \
-    curl \
-    tar \
-    gzip \
-    unzip \
-    build-essential \
-    burpsuite \
-    zaproxy \
-    qemu-kvm \
-    libvirt-daemon-system \
-    libvirt-clients \
-    bridge-utils \
-    virt-manager \
-    qemu-guest-agent \
-    spice-vdagent \
-    timeshift
+# True if apt has an installable candidate for the package.
+apt_has() {
+    local cand
+    cand="$(apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {print $2}')"
+    [[ -n "$cand" && "$cand" != "(none)" ]]
+}
 
-# --- Rust and Cargo Installation ---
-echo "Installing Rust and Cargo..."
-# Check if rustup is already installed to prevent re-running
-if ! command -v rustup &> /dev/null; then
-    curl https://sh.rustup.rs -sSf | sh -s -- -y # -y for non-interactive installation
-    # Source cargo env immediately for subsequent commands in this script
-    source "$HOME/.cargo/env"
-else
-    echo "Rust (rustup) is already installed. Skipping."
-    # Ensure cargo env is sourced in current shell session if rustup was already there
-    source "$HOME/.cargo/env"
-fi
+dpkg_installed() {
+    [[ "$(dpkg-query -W -f='${Status}' "$1" 2>/dev/null)" == "install ok installed" ]]
+}
 
-# Install zellij via cargo
-echo "Installing zellij via cargo..."
-if ! command -v zellij &> /dev/null; then
-    cargo install --locked zellij
-else
-    echo "zellij is already installed. Skipping cargo install."
-fi
-
-# --- Neovim Installation ---
-echo "Installing the latest version of Neovim..."
-
-# Remove any existing apt-installed Neovim
-echo "Removing any apt-installed Neovim..."
-sudo apt remove -y nvim || true # '|| true' prevents script from exiting if nvim isn't installed
-
-# Download the latest Neovim pre-built archive to cache
-NVIM_ARCHIVE="$CACHE_DIR/nvim-linux-x86_64.tar.gz"
-echo "Downloading the latest Neovim archive to $NVIM_ARCHIVE..."
-if [ ! -f "$NVIM_ARCHIVE" ]; then # Only download if not already in cache
-    curl -o "$NVIM_ARCHIVE" -L "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz"
-else
-    echo "Neovim archive already exists in cache. Skipping download."
-fi
-
-# Remove any previous manual Neovim installation directory
-echo "Cleaning up previous Neovim installation directory in /opt..."
-sudo rm -rf /opt/nvim
-
-# Extract the new Neovim archive to /opt
-echo "Extracting Neovim from "$NVIM_ARCHIVE" to /opt..."
-sudo tar -C /opt -xzf "$NVIM_ARCHIVE"
-
-# --- LazyVim Installation ---
-echo "Installing LazyVim configuration for Neovim..."
-
-# Check if LazyVim appears to be already installed based on a key file
-if [ -f "$HOME/.config/nvim/lua/lazyvim/config/init.lua" ]; then
-    echo "LazyVim appears to be already installed. Skipping re-installation."
-else
-    echo "Proceeding with LazyVim installation."
-
-    # Backup existing Neovim configs
-    echo "Backing up existing Neovim configuration files..."
-    mv ~/.config/nvim{,.bak} 2>/dev/null || true # Ignore errors if file doesn't exist
-    mv ~/.local/share/nvim{,.bak} 2>/dev/null || true
-    mv ~/.local/state/nvim{,.bak} 2>/dev/null || true
-    mv ~/.cache/nvim{,.bak} 2>/dev/null || true
-
-    # Ensure the target directory for new config is clean and writable by user
-    echo "Ensuring ~/.config/nvim is clean for new configuration (forceful removal)..."
-    # Use sudo rm -rf to ensure full cleanup of potentially problematic files/directories
-    sudo rm -rf "$HOME/.config/nvim"
-
-    # Clone LazyVim starter to cache, then copy
-    LAZYVIM_REPO_DIR="$CACHE_DIR/LazyVim_starter"
-    echo "Cloning LazyVim starter configuration to $LAZYVIM_REPO_DIR..."
-    if [ ! -d "$LAZYVIM_REPO_DIR" ]; then
-        git clone https://github.com/LazyVim/starter "$LAZYVIM_REPO_DIR"
+# Install packages that are missing and available; report unavailable ones instead of aborting.
+apt_install_missing() {
+    local todo=() unavailable=() p
+    for p in "$@"; do
+        if dpkg_installed "$p"; then continue
+        elif apt_has "$p"; then todo+=("$p")
+        else unavailable+=("$p"); fi
+    done
+    ((${#unavailable[@]})) && warn "not in this distro's repos, skipped: ${unavailable[*]}"
+    if ((${#todo[@]})); then
+        apt_get install "${todo[@]}"
+        changed "apt installed: ${todo[*]}"
     else
-        echo "LazyVim starter already exists in cache. Pulling latest changes..."
-        (cd "$LAZYVIM_REPO_DIR" && git pull)
+        info "All available apt packages already installed."
+    fi
+}
+
+ensure_flathub() {
+    command -v flatpak >/dev/null || apt_get install flatpak
+    flatpak remotes --columns=name 2>/dev/null | grep -qxF flathub && return
+    sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+}
+
+# Download URL to DEST. DEST is only replaced when the content changed, so a
+# failed or partial download never clobbers a good cached copy.
+fetch() {
+    local url="$1" dest="$2" tmp
+    tmp="$(mktemp "$dest.XXXXXX")"
+    if ! curl -fsSL --retry 3 -o "$tmp" "$url" || [[ ! -s "$tmp" ]]; then
+        rm -f "$tmp"
+        [[ -s "$dest" ]] || die "download failed: $url"
+        warn "download failed, using cached $dest"
+        return 0
+    fi
+    if cmp -s "$tmp" "$dest"; then rm -f "$tmp"; else mv "$tmp" "$dest"; fi
+}
+
+# Path to a repo file: the local checkout if present, else downloaded from GitHub.
+repo_file() {
+    local rel="$1" cached
+    if [[ -f "$REPO_ROOT/$rel" ]]; then
+        echo "$REPO_ROOT/$rel"
+    else
+        cached="$CACHE_DIR/repo/$rel"
+        mkdir -p "$(dirname "$cached")"
+        fetch "$REPO_RAW_URL/$rel" "$cached"
+        echo "$cached"
+    fi
+}
+
+# Install SRC to root-owned DEST if different (backing up the old one).
+# Returns 0 if the file changed, 1 if it was already up to date.
+install_root_file() {
+    local src="$1" dest="$2"
+    if sudo cmp -s "$src" "$dest" 2>/dev/null; then
+        info "$dest is up to date."
+        return 1
+    fi
+    if sudo test -e "$dest"; then
+        sudo cp -a "$dest" "$dest.bak.$STAMP"
+        info "Backed up $dest -> $dest.bak.$STAMP"
+    fi
+    sudo install -D -m 0644 "$src" "$dest"
+    info "Installed $dest"
+}
+
+# Append a block to a file once, keyed on an exact marker line.
+append_once() {
+    local file="$1" marker="$2" body="$3"
+    touch "$file"
+    if grep -qxF "$marker" "$file"; then
+        info "$marker already present in $file."
+    else
+        printf '\n%s\n%s\n' "$marker" "$body" >> "$file"
+        changed "added '$marker' to $file"
+    fi
+}
+
+# --- Steps -----------------------------------------------------------------
+preflight() {
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            --no-upgrade) UPGRADE=0 ;;
+            -h|--help) sed -n '3,11p' "${BASH_SOURCE[0]}"; exit 0 ;;
+            *) die "unknown argument: $arg" ;;
+        esac
+    done
+    [[ $EUID -ne 0 ]] || die "run as your normal user, not root/sudo (it uses sudo itself)."
+    [[ -r /etc/os-release ]] || die "/etc/os-release not found."
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    case "${ID:-}" in
+        linuxmint) DISTRO=mint ;;
+        parrot)    DISTRO=parrot ;;
+        *)
+            if [[ " ${ID_LIKE:-} " == *" debian "* || " ${ID_LIKE:-} " == *" ubuntu "* ]]; then
+                DISTRO=other
+                warn "untested distro '${ID:-?}'; continuing with Debian defaults."
+            else
+                die "unsupported distro '${ID:-?}' (expected Linux Mint or Parrot OS)."
+            fi
+            ;;
+    esac
+    [[ "$(uname -m)" == x86_64 ]] || die "only x86_64 is supported (Neovim tarball, etc)."
+    log "Detected ${PRETTY_NAME:-$ID} ($DISTRO); mode: $( ((UPGRADE)) && echo 'install + upgrade' || echo 'install missing only')"
+
+    sudo -v   # prompt for the password once, up front
+    mkdir -p "$CACHE_DIR"
+}
+
+system_update() {
+    log "Refreshing package lists"
+    apt_get update >/dev/null   # needed so availability checks are accurate
+    ((UPGRADE)) || return 0
+    # Parrot is a rolling release; its docs call for full-upgrade.
+    local cmd=upgrade n
+    [[ $DISTRO == parrot ]] && cmd=full-upgrade
+    n="$(apt-get -s "$cmd" 2>/dev/null | grep -c '^Inst ' || true)"
+    if ((n > 0)); then
+        log "Upgrading $n system packages ($cmd)"
+        apt_get "$cmd"
+        changed "upgraded $n system packages"
+    else
+        info "System packages are up to date."
+    fi
+}
+
+install_packages() {
+    log "Installing packages"
+    local pkgs=("${COMMON_PACKAGES[@]}")
+    if [[ $DISTRO == parrot ]]; then
+        pkgs+=("${PARROT_ONLY_PACKAGES[@]}")
+    else
+        info "Skipping pentest tools on $DISTRO: ${PARROT_ONLY_PACKAGES[*]}"
+    fi
+    apt_install_missing "${pkgs[@]}"
+
+    local pkg app
+    for pkg in "${!APT_OR_FLATPAK[@]}"; do
+        app="${APT_OR_FLATPAK[$pkg]}"
+        if dpkg_installed "$pkg"; then
+            info "$pkg already installed (apt)."
+        elif flatpak info "$app" >/dev/null 2>&1; then
+            info "$app already installed (Flatpak)."
+        elif apt_has "$pkg"; then
+            apt_get install "$pkg"
+            changed "apt installed: $pkg"
+        else
+            info "$pkg not in apt repos; using Flathub."
+            ensure_flathub
+            sudo flatpak install -y --noninteractive flathub "$app"
+            changed "flatpak installed: $app"
+        fi
+    done
+
+    # Signal Desktop refuses to run once too old, so keep Flatpak apps current too.
+    if ((UPGRADE)) && command -v flatpak >/dev/null; then
+        local n
+        n="$(flatpak remote-ls --updates --columns=application 2>/dev/null | grep -c . || true)"
+        if ((n > 0)); then
+            sudo flatpak update -y --noninteractive
+            changed "updated $n Flatpak refs"
+        fi
+    fi
+}
+
+install_rust_and_zellij() {
+    log "Rust and zellij"
+    if ! command -v rustup >/dev/null && [[ ! -x "$HOME/.cargo/bin/rustup" ]]; then
+        curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y
+        changed "installed rustup"
+    else
+        info "rustup already installed."
+    fi
+    # shellcheck disable=SC1091
+    . "$HOME/.cargo/env"
+    if ((UPGRADE)); then rustup update; fi
+
+    if command -v zellij >/dev/null; then
+        info "zellij already installed."
+    else
+        cargo install --locked zellij
+        changed "installed zellij"
+    fi
+}
+
+install_neovim() {
+    log "Neovim (latest release tarball)"
+    if dpkg_installed neovim; then
+        info "Removing distro neovim package in favour of the release tarball."
+        apt_get remove neovim
+        changed "removed apt neovim"
+    fi
+    local dest=/opt/nvim-linux-x86_64 archive="$CACHE_DIR/nvim-linux-x86_64.tar.gz"
+    if [[ -x "$dest/bin/nvim" ]] && ((!UPGRADE)); then
+        info "$("$dest/bin/nvim" --version | head -n1) already installed."
+        return
     fi
 
-    echo "Copying LazyVim configuration from cache to ~/.config/nvim..."
-    # Create target directory with correct permissions for the current user
-    mkdir -p "$HOME/.config/nvim"
-    # Copy contents using -a to preserve permissions/ownership from the cloned repo
-    # and ensure all files including dotfiles are copied correctly.
-    cp -a "$LAZYVIM_REPO_DIR/." "$HOME/.config/nvim/"
+    fetch "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz" "$archive"
+    tar -tzf "$archive" >/dev/null || die "corrupt Neovim archive: $archive (delete it and re-run)"
+    local sum
+    sum="$(sha256sum "$archive" | cut -d' ' -f1)"
+    if [[ -x "$dest/bin/nvim" && "$(cat "$dest/.archive-sha256" 2>/dev/null)" == "$sum" ]]; then
+        info "$("$dest/bin/nvim" --version | head -n1) is the latest release."
+        return
+    fi
 
-    # Remove the .git folder from copied LazyVim clone
-    echo "Removing .git folder from copied LazyVim configuration..."
+    # Extract next to the target, then swap, so a failure never leaves /opt empty.
+    local staging
+    staging="$(sudo mktemp -d /opt/.nvim-staging.XXXXXX)"
+    sudo tar -C "$staging" -xzf "$archive"
+    sudo rm -rf /opt/nvim /opt/nvim-linux-x86_64   # /opt/nvim: layout from older script versions
+    echo "$sum" | sudo tee "$staging/nvim-linux-x86_64/.archive-sha256" >/dev/null
+    sudo mv "$staging/nvim-linux-x86_64" "$dest"
+    sudo rmdir "$staging"
+    changed "installed $("$dest/bin/nvim" --version | head -n1)"
+}
+
+install_lazyvim() {
+    log "LazyVim"
+    if [[ -f "$HOME/.config/nvim/lazy-lock.json" || -f "$HOME/.config/nvim/lua/config/lazy.lua" ]]; then
+        info "LazyVim config already present; leaving it alone."
+        return
+    fi
+    local d
+    for d in "$HOME/.config/nvim" "$HOME/.local/share/nvim" "$HOME/.local/state/nvim" "$HOME/.cache/nvim"; do
+        if [[ -e "$d" ]]; then
+            mv "$d" "$d.bak.$STAMP"
+            info "Backed up $d -> $d.bak.$STAMP"
+        fi
+    done
+    git clone --depth 1 https://github.com/LazyVim/starter "$HOME/.config/nvim"
     rm -rf "$HOME/.config/nvim/.git"
-fi
+    changed "installed LazyVim starter config"
+}
 
-# --- Nerd Fonts Installation (JetBrainsMono) ---
-echo "Installing JetBrainsMono Nerd Font..."
+install_nerd_font() {
+    log "JetBrainsMono Nerd Font"
+    local name=JetBrainsMono
+    local font_dir="$HOME/.local/share/fonts/$name"
+    if [[ -d "$font_dir" && -n "$(ls -A "$font_dir")" ]] || [[ -d "$HOME/.fonts/$name" ]]; then
+        info "$name already installed."
+        return
+    fi
+    local zip="$CACHE_DIR/$name.zip"
+    fetch "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$name.zip" "$zip"
+    mkdir -p "$font_dir"
+    unzip -oq "$zip" -d "$font_dir"
+    fc-cache -f "$font_dir" >/dev/null
+    changed "installed $name Nerd Font"
+}
 
-FONT_NAME="JetBrainsMono"
-FONT_DIR="$HOME/.fonts/$FONT_NAME"
-FONT_ZIP="$CACHE_DIR/$FONT_NAME.zip" # Download to cache
-
-# Check if the font directory already exists and contains files
-if [ -d "$FONT_DIR" ] && [ "$(ls -A "$FONT_DIR")" ]; then
-    echo "$FONT_NAME Nerd Font appears to be already installed. Skipping."
-else
-    echo "Downloading $FONT_NAME Nerd Font to $FONT_ZIP..."
-    if [ ! -f "$FONT_ZIP" ]; then # Only download if not already in cache
-        curl -o "$FONT_ZIP" -L "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$FONT_NAME.zip"
+install_keyd() {
+    log "keyd $KEYD_VERSION"
+    local installed=""
+    command -v keyd >/dev/null && installed="$(keyd --version 2>/dev/null | awk '{print $2}')"
+    if [[ "$installed" == "$KEYD_VERSION" ]]; then
+        info "keyd $KEYD_VERSION already installed."
     else
-        echo "Font archive already exists in cache. Skipping download."
+        info "Building keyd $KEYD_VERSION (found: ${installed:-none})."
+        local src="$CACHE_DIR/keyd-$KEYD_VERSION"
+        [[ -d "$src" ]] || git clone --depth 1 --branch "$KEYD_VERSION" https://github.com/rvaiya/keyd "$src"
+        make -C "$src"
+        sudo make -C "$src" install
+        changed "installed keyd $KEYD_VERSION"
+    fi
+    if ! systemctl is-enabled --quiet keyd || ! systemctl is-active --quiet keyd; then
+        sudo systemctl enable --now keyd
+        changed "enabled keyd service"
     fi
 
-    echo "Creating fonts directory: ${HOME}/.fonts"
-    mkdir -p "$HOME/.fonts"
-
-    echo "Unzipping "$FONT_ZIP" to "$FONT_DIR/"..."
-    unzip -o "$FONT_ZIP" -d "$FONT_DIR/" # -o option to overwrite files without prompt
-
-    echo "Updating font cache..."
-    fc-cache -fv
-    echo "$FONT_NAME Nerd Font installation complete."
-fi
-
-# --- Keyd Installation ---
-echo "Installing keyd..."
-KEYD_REPO_DIR="$CACHE_DIR/keyd"
-
-if ! command -v keyd &> /dev/null || ! systemctl is-active --quiet keyd; then
-    echo "Cloning keyd repository to $KEYD_REPO_DIR..."
-    if [ ! -d "$KEYD_REPO_DIR" ]; then
-        git clone https://github.com/rvaiya/keyd "$KEYD_REPO_DIR"
-    else
-        echo "Keyd repository already exists in cache. Pulling latest changes..."
-        (cd "$KEYD_REPO_DIR" && git pull)
+    if install_root_file "$(repo_file etc/keyd/default.conf)" /etc/keyd/default.conf; then
+        sudo keyd reload || sudo systemctl restart keyd
+        changed "updated /etc/keyd/default.conf"
     fi
+}
 
-    echo "Building and installing keyd..."
-    (cd "$KEYD_REPO_DIR" && make && sudo make install)
+install_button_scroll() {
+    log "Middle-button scrolling (libinput, X11)"
+    # Hold middle + move = scroll; click without moving = normal middle click.
+    if install_root_file "$(repo_file etc/X11/xorg.conf.d/40-button-scroll.conf)" \
+        /etc/X11/xorg.conf.d/40-button-scroll.conf; then
+        changed "installed /etc/X11/xorg.conf.d/40-button-scroll.conf"
+    fi
+    # Apply to the running X session too, so no re-login is needed.
+    if [[ "${XDG_SESSION_TYPE:-}" == x11 ]] && command -v xinput >/dev/null; then
+        local id
+        while read -r id; do
+            xinput set-prop "$id" "libinput Scroll Method Enabled" 0 0 1 2>/dev/null || true
+        done < <(xinput list --id-only 2>/dev/null)
+    elif [[ "${XDG_SESSION_TYPE:-}" == wayland ]]; then
+        warn "Wayland session: xorg.conf.d does not apply; enable button scrolling in your desktop's mouse settings."
+    fi
+}
 
-    echo "Enabling and starting keyd service..."
-    sudo systemctl enable --now keyd
-else
-    echo "keyd is already installed and running. Skipping build and install."
+add_user_groups() {
+    log "User groups for virtualization"
+    local g changed=0
+    for g in libvirt kvm; do
+        if ! getent group "$g" >/dev/null; then
+            warn "group '$g' does not exist; skipped."
+        elif id -nG "$USER" | tr ' ' '\n' | grep -qxF "$g"; then
+            info "$USER already in $g."
+        else
+            sudo usermod -aG "$g" "$USER"
+            changed "added $USER to group $g"
+            changed=1
+        fi
+    done
+    ((changed)) && warn "log out and back in for group changes to take effect."
+    return 0
+}
+
+configure_shell() {
+    log "Shell aliases (~/.bash_aliases)"
+    local f="$HOME/.bash_aliases"
+    append_once "$f" "# Neovim Path" 'export PATH="$PATH:/opt/nvim-linux-x86_64/bin"'
+    append_once "$f" "# Cargo Environment" '. "$HOME/.cargo/env"'
+    append_once "$f" "# Neovim Aliases" $'alias vi=\'nvim\'\nalias vim=\'nvim\''
+    append_once "$f" "# Zellij Auto-Start" 'eval "$(zellij setup --generate-auto-start bash)"'
+    # Mint's and Parrot's default ~/.bashrc source ~/.bash_aliases; warn if this one doesn't.
+    grep -q 'bash_aliases' "$HOME/.bashrc" 2>/dev/null \
+        || warn "~/.bashrc does not source ~/.bash_aliases; add: [ -f ~/.bash_aliases ] && . ~/.bash_aliases"
+}
+
+cleanup() {
+    ((UPGRADE)) || return 0
+    log "Cleanup"
+    apt_get autoremove
+    apt_get clean
+}
+
+summary() {
+    log "Bootstrap complete."
+    if ((${#CHANGES[@]})); then
+        info "Changes made this run:"
+        printf '      - %s\n' "${CHANGES[@]}"
+        info "Open a new terminal (or log out/in) to pick up PATH, aliases and groups."
+    else
+        info "Nothing to do; everything was already set up."
+    fi
+}
+
+main() {
+    preflight "$@"
+    system_update
+    install_packages
+    install_rust_and_zellij
+    install_neovim
+    install_lazyvim
+    install_nerd_font
+    install_keyd
+    install_button_scroll
+    add_user_groups
+    configure_shell
+    cleanup
+    summary
+}
+
+# Allow sourcing for testing without running anything.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
 fi
-
-# Configure keyd default.conf
-KEYD_CONF_DIR="/etc/keyd"
-KEYD_DEFAULT_CONF="$KEYD_CONF_DIR/default.conf"
-MY_KEYD_CONF_URL="https://raw.githubusercontent.com/sunzenshen/setup/master/etc/keyd/default.conf"
-MY_KEYD_CONF_CACHE="$CACHE_DIR/keyd_default.conf"
-
-echo "Configuring keyd/default.conf..."
-
-# Download my specific keyd default.conf to cache
-echo "Downloading custom keyd config to $MY_KEYD_CONF_CACHE..."
-if [ ! -f "$MY_KEYD_CONF_CACHE" ]; then
-    curl -o "$MY_KEYD_CONF_CACHE" -L "$MY_KEYD_CONF_URL"
-else
-    echo "Custom keyd config already exists in cache. Skipping download."
-fi
-
-# Check if the content is different before copying and restarting service
-if sudo diff -q "$MY_KEYD_CONF_CACHE" "$KEYD_DEFAULT_CONF" &>/dev/null; then
-    echo "Keyd default.conf is already up-to-date. Skipping copy and restart."
-else
-    echo "Backing up existing /etc/keyd/default.conf (if any)..."
-    sudo mv "$KEYD_DEFAULT_CONF"{,.bak} 2>/dev/null || true # Backup existing
-    echo "Copying custom keyd config to $KEYD_DEFAULT_CONF..."
-    sudo mkdir -p "$KEYD_CONF_DIR" # Ensure directory exists
-    sudo cp "$MY_KEYD_CONF_CACHE" "$KEYD_DEFAULT_CONF"
-
-    echo "Reloading keyd service to apply new configuration..."
-    sudo systemctl reload keyd || sudo systemctl restart keyd # reload if possible, else restart
-fi
-
-# --- Add User to libvirt and kvm groups ---
-echo "Adding current user ($USER) to 'libvirt' and 'kvm' groups..."
-# Check if user is already in libvirt group
-if ! id -Gn "$USER" | grep -q '\blibvirt\b'; then
-    sudo adduser "$USER" libvirt
-    echo "User '$USER' added to 'libvirt' group."
-else
-    echo "User '$USER' is already in 'libvirt' group. Skipping."
-fi
-
-# Check if user is already in kvm group
-if ! id -Gn "$USER" | grep -q '\bkvm\b'; then
-    sudo adduser "$USER" kvm
-    echo "User '$USER' added to 'kvm' group."
-else
-    echo "User '$USER' is already in 'kvm' group. Skipping."
-fi
-echo "Note: You will need to log out and log back in for group changes to take effect."
-
-
-# --- .bash_aliases Configuration ---
-echo "Configuring ~/.bash_aliases for Neovim and Zellij..."
-BASH_ALIASES_FILE="$HOME/.bash_aliases"
-NEOVIM_BIN_PATH="/opt/nvim-linux-x86_64/bin"
-
-# Ensure .bash_aliases file exists
-touch "$BASH_ALIASES_FILE"
-
-# The .bashrc already sources ~/.bash_aliases, so no need to add that block.
-# We only add the specific configurations to ~/.bash_aliases.
-
-# Add Neovim to PATH if not already present in .bash_aliases
-if ! grep -q "export PATH=\"\$PATH:$NEOVIM_BIN_PATH\"" "$BASH_ALIASES_FILE"; then
-    echo "Adding Neovim to PATH in $BASH_ALIASES_FILE..."
-    echo "" >> "$BASH_ALIASES_FILE" # Add a newline for separation
-    echo "# Neovim Path" >> "$BASH_ALIASES_FILE"
-    echo "export PATH=\"\$PATH:$NEOVIM_BIN_PATH\"" >> "$BASH_ALIASES_FILE"
-else
-    echo "Neovim PATH already configured in $BASH_ALIASES_FILE."
-fi
-
-# Add .cargo/env source if not already present in .bash_aliases
-if ! grep -q ". \"\$HOME/.cargo/env\"" "$BASH_ALIASES_FILE"; then
-    echo "Adding .cargo/env source to $BASH_ALIASES_FILE..."
-    echo "" >> "$BASH_ALIASES_FILE"
-    echo "# Cargo Environment" >> "$BASH_ALIASES_FILE"
-    echo ". \"\$HOME/.cargo/env\"" >> "$BASH_ALIASES_FILE"
-else
-    echo ".cargo/env already sourced in $BASH_ALIASES_FILE."
-fi
-
-# Add Neovim aliases if not already present in .bash_aliases
-if ! grep -q "alias vi='nvim'" "$BASH_ALIASES_FILE"; then
-    echo "Adding 'alias vi=nvim' to $BASH_ALIASES_FILE..."
-    echo "" >> "$BASH_ALIASES_FILE"
-    echo "# Neovim Aliases" >> "$BASH_ALIASES_FILE"
-    echo "alias vi='nvim'" >> "$BASH_ALIASES_FILE"
-else
-    echo "'alias vi=nvim' already configured in $BASH_ALIASES_FILE."
-fi
-
-if ! grep -q "alias vim='nvim'" "$BASH_ALIASES_FILE"; then
-    echo "Adding 'alias vim=nvim' to $BASH_ALIASES_FILE..."
-    echo "alias vim='nvim'" >> "$BASH_ALIASES_FILE"
-else
-    echo "'alias vim=nvim' already configured in $BASH_ALIASES_FILE."
-fi
-
-# Add zellij auto-start if not already present in .bash_aliases
-if ! grep -q "zellij setup --generate-auto-start bash" "$BASH_ALIASES_FILE"; then
-    echo "Adding zellij auto-start to $BASH_ALIASES_FILE..."
-    echo "" >> "$BASH_ALIASES_FILE"
-    echo "# Zellij Auto-Start" >> "$BASH_ALIASES_FILE"
-    echo "eval \"\$(zellij setup --generate-auto-start bash)\"" >> "$BASH_ALIASES_FILE"
-else
-    echo "Zellij auto-start already configured in $BASH_ALIASES_FILE."
-fi
-
-
-# --- System Cleanup ---
-echo "Cleaning up unnecessary packages and cache..."
-sudo apt autoremove -y
-sudo apt clean -y
-
-echo "Bootstrap process completed successfully!"
-
-# --- Source .bashrc ---
-echo "Sourcing ~/.bashrc to apply changes immediately..."
-source "$HOME/.bashrc"
-
-echo "All changes should now be active in this terminal session."
-echo "IMPORTANT: For virtualization group changes to take effect, you must log out and log back in."
