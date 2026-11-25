@@ -48,6 +48,8 @@
 SetCapsLockState, AlwaysOff
 ; Never leave Win held down by Caps+Alt tiling if the script exits or reloads.
 OnExit("ReleaseTilingWin")
+; Hover the tray icon to confirm which revision is loaded (bump when behavior changes).
+Menu, Tray, Tip, capslock_remap_vim (2026-11-25: Caps+Alt tiling holds Win)
 
 ; Alan's Mods:
 ; CapsLock pressed alone is an esc press
