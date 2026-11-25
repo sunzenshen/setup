@@ -3,12 +3,12 @@
 ; You don't have to credit Alan, but be cool and credit the rest of these sources (Danik, Gustavo, et al) if you republish these settings.
 
 ; Original Capslock Remapping Script Danik danikgames.com (article now offline)
-; 
+;
 ; Functionality:
 ; - Deactivates capslock for normal (accidental) use.
-; - Hold Capslock and drag anywhere in a window to move it (not just the title bar).
-; - Access the following functions when pressing Capslock: 
-;     - Default behavior: Capslock + <key> sends Ctrl + <key> (explicitly mapped for stability)
+; - Access the following functions when pressing Capslock:
+;     - Default behavior: Capslock + mapped letters, minus, equals, backtick,
+;         Backspace, Delete, Insert, Home, End, Enter, and F1-F12 sends Ctrl + that key.
 ;     - Overrides for specific keys:
 ;         Cursor keys           - H, J, K, L (Vim-style)
 ;         PgDn, PgUp            - D, U
@@ -20,17 +20,20 @@
 ;         Esc                   - Capslock (tap)
 ;         Ctrl + Space          - Space
 ;         Enter Key             - ;
-;         Virtual Desktops      - [ (Ctrl+Win+Left), ] (Ctrl+Win+Right), ' (Ctrl+Win+Down)
+;         Virtual Desktops      - [ (Ctrl+Win+Left), ] (Ctrl+Win+Right)
 ;         Alacritty Mode        - / (Ctrl+Shift+Space)
-;         Task View             - \ (Win+Tab)
-;  
-; To use capslock as you normally would, you can press WinKey + Capslock
+;         Task View             - ' (Win+Tab)
+;         Pinned apps           - 0-9 (Win+Number)
+;         Media keys            - Up/Down (volume), Left/Right (previous/next track)
+; - Capslock + Alt + H/J/K/L sends Win+Left/Down/Up/Right. Capslock + Alt + F sends F11.
+; - Plain Alt shortcuts pass through for zellij in Alacritty.
+; - Mouse buttons XButton1 and XButton2 send right and middle click.
 
 
 ; This script is mostly assembled from modified versions of the following awesome scripts:
 ;
-; # Home Row Computing by Gustavo Duarte: http://duartes.org/gustavo/blog/post/home-row-computing for 
-; Changes: 
+; # Home Row Computing by Gustavo Duarte: http://duartes.org/gustavo/blog/post/home-row-computing for
+; Changes:
 ; - Does not need register remapping of AppsKey using SharpKeys.
 ; - Uses Vim style navigation keys (standard and works better
 ;   across different language layouts)
@@ -38,8 +41,6 @@
 ; - Added more hotkeys for insert, undo, redo etc.
 ;
 ; # Get the Linux Alt+Window Drag Functionality in Windows: http://www.howtogeek.com/howto/windows-vista/get-the-linux-altwindow-drag-functionality-in-windows/
-; Changes: The only change was using Capslock instead of Alt. This 
-; also removes problems in certain applications.
 
 
 #Persistent
@@ -48,6 +49,17 @@ SetCapsLockState, AlwaysOff
 ; Alan's Mods:
 ; CapsLock pressed alone is an esc press
 CapsLock::Send {Blind}{esc}
+
+; Capslock + Alt + hjkl (Windows Tiling) and f (Fullscreen)
+; Mask the Alt release before sending the shortcut.
+#If GetKeyState("CapsLock", "P") && GetKeyState("Alt", "P")
+Capslock & h::SendInput {Blind}{vk07}{Alt Up}#{Left}
+Capslock & j::SendInput {Blind}{vk07}{Alt Up}#{Down}
+Capslock & k::SendInput {Blind}{vk07}{Alt Up}#{Up}
+Capslock & l::SendInput {Blind}{vk07}{Alt Up}#{Right}
+Capslock & f::SendInput {Blind}{vk07}{Alt Up}{F11}
+#If
+
 
 ; --- Default behavior: Capslock + <key> sends Ctrl + <key> (Explicitly mapped) ---
 ; This section manually maps common keys to Ctrl+Key when Capslock is held.
@@ -90,7 +102,28 @@ Capslock & 9::Send #9
 ; Other common symbols
 Capslock & -::Send ^-
 Capslock & =::Send ^=
-; comma, period, bracket, backslash, slash, apostrophe are overridden below
+Capslock & SC029::Send ^{SC029} ; Backtick
+; comma, period, brackets, slash, apostrophe are overridden below
+
+; Editing and function keys
+Capslock & Backspace::Send ^{Backspace}
+Capslock & Delete::Send ^{Delete}
+Capslock & Insert::Send ^{Insert}
+Capslock & Home::Send ^{Home}
+Capslock & End::Send ^{End}
+Capslock & Enter::Send ^{Enter}
+Capslock & F1::Send ^{F1}
+Capslock & F2::Send ^{F2}
+Capslock & F3::Send ^{F3}
+Capslock & F4::Send ^{F4}
+Capslock & F5::Send ^{F5}
+Capslock & F6::Send ^{F6}
+Capslock & F7::Send ^{F7}
+Capslock & F8::Send ^{F8}
+Capslock & F9::Send ^{F9}
+Capslock & F10::Send ^{F10}
+Capslock & F11::Send ^{F11}
+Capslock & F12::Send ^{F12}
 #If ; Turn off #If for subsequent code blocks
 
 
@@ -186,35 +219,6 @@ Capslock & ] up::Send {Blind}{Ctrl Up}{LWIN Up}{Right Up}
 Capslock & '::Send {Blind}{LWIN Down}{Tab Down}
 Capslock & ' up::Send {Blind}{LWIN Up}{Tab Up}
 
-
-; Make Capslock & Alt Equivalent to Control+Alt
-!Capslock::SendInput {Ctrl down}{Alt Down}
-!Capslock up::SendInput {Ctrl up}{Alt up}
-
-
-; --- Alt Keybinds ---
-
-; Alt + hjkl (Windows Tiling: Win+Left, Win+Down, Win+Up, Win+Right)
-Alt & h::Send {Blind}{AltUp}{LWIN Down}{Left Down}
-Alt & h up::Send {Blind}{AltUp}{LWIN Up}{Left Up}
-Alt & j::Send {Blind}{AltUp}{LWIN Down}{Down Down}
-Alt & j up::Send {Blind}{AltUp}{LWIN Up}{Down Up}
-Alt & k::Send {Blind}{AltUp}{LWIN Down}{Up Down}
-Alt & k up::Send {Blind}{AltUp}{LWIN Up}{Up Up}
-Alt & l::Send {Blind}{AltUp}{LWIN Down}{Right Down}
-Alt & l up::Send {Blind}{AltUp}{LWIN Up}{Right Up}
-
-; Alt + f (Fullscreen: F11)
-Alt & f::Send {Blind}{AltUp}{F11 Down}
-Alt & f up::Send {Blind}{AltUp}{F11 Up}
-
-; Alt + ' (Task View: Win+Tab)
-Alt & '::Send {Blind}{LWIN Down}{Tab Down}
-Alt & ' up::Send {Blind}{LWIN Up}{Tab Up}
-
-; Make Alt+; -> Enter Key
-Alt & `;::Send {Blind}{Enter DownTemp}
-Alt & `; up::Send {Blind}{Enter Up}
 
 ; Mouse buttons (retained from original base)
 XButton1::RButton

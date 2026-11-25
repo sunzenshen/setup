@@ -54,6 +54,8 @@ apt_has() {
 }
 
 dpkg_installed() {
+    # dpkg-query expands the Status field in its format string.
+    # shellcheck disable=SC2016
     [[ "$(dpkg-query -W -f='${Status}' "$1" 2>/dev/null)" == "install ok installed" ]]
 }
 
@@ -116,10 +118,10 @@ install_root_file() {
         return 1
     fi
     if sudo test -e "$dest"; then
-        sudo cp -a "$dest" "$dest.bak.$STAMP"
+        sudo cp -a "$dest" "$dest.bak.$STAMP" || die "could not back up $dest"
         info "Backed up $dest -> $dest.bak.$STAMP"
     fi
-    sudo install -D -m 0644 "$src" "$dest"
+    sudo install -D -m 0644 "$src" "$dest" || die "could not install $dest"
     info "Installed $dest"
 }
 
@@ -147,6 +149,7 @@ preflight() {
     done
     [[ $EUID -ne 0 ]] || die "run as your normal user, not root/sudo (it uses sudo itself)."
     [[ -r /etc/os-release ]] || die "/etc/os-release not found."
+    # Read the target machine's distro metadata at runtime.
     # shellcheck disable=SC1091
     . /etc/os-release
     case "${ID:-}" in
@@ -232,6 +235,7 @@ install_rust_and_zellij() {
     else
         info "rustup already installed."
     fi
+    # Rustup generates this file in the invoking user's home directory.
     # shellcheck disable=SC1091
     . "$HOME/.cargo/env"
     if ((UPGRADE)); then rustup update; fi
@@ -330,10 +334,36 @@ install_keyd() {
         changed "enabled keyd service"
     fi
 
-    if install_root_file "$(repo_file etc/keyd/default.conf)" /etc/keyd/default.conf; then
+    local config src dest reload=0
+    for config in default.conf trackman.conf; do
+        src="$(repo_file "etc/keyd/$config")"
+        dest="/etc/keyd/$config"
+        if install_root_file "$src" "$dest"; then
+            changed "updated $dest"
+            reload=1
+        fi
+    done
+    if ((reload)); then
         sudo keyd reload || sudo systemctl restart keyd
-        changed "updated /etc/keyd/default.conf"
     fi
+}
+
+configure_xfce_tiling() {
+    local desktop="${XDG_CURRENT_DESKTOP:-}"
+    if [[ "${desktop^^}" != *XFCE* ]] || ! command -v xfconf-query >/dev/null; then
+        return 0
+    fi
+
+    log "Xfce window tiling shortcuts"
+    local channel=xfce4-keyboard-shortcuts direction property action
+    for direction in Left Right Up Down; do
+        property="/xfwm4/custom/<Super>$direction"
+        action="tile_${direction,,}_key"
+        if [[ "$(xfconf-query --channel "$channel" --property "$property" 2>/dev/null)" != "$action" ]]; then
+            xfconf-query --channel "$channel" --property "$property" --create --type string --set "$action"
+            changed "set Xfce Super+$direction to $action"
+        fi
+    done
 }
 
 install_button_scroll() {
@@ -356,7 +386,7 @@ install_button_scroll() {
 
 add_user_groups() {
     log "User groups for virtualization"
-    local g changed=0
+    local g groups_changed=0
     for g in libvirt kvm; do
         if ! getent group "$g" >/dev/null; then
             warn "group '$g' does not exist; skipped."
@@ -365,19 +395,25 @@ add_user_groups() {
         else
             sudo usermod -aG "$g" "$USER"
             changed "added $USER to group $g"
-            changed=1
+            groups_changed=1
         fi
     done
-    ((changed)) && warn "log out and back in for group changes to take effect."
+    ((groups_changed)) && warn "log out and back in for group changes to take effect."
     return 0
 }
 
 configure_shell() {
     log "Shell aliases (~/.bash_aliases)"
     local f="$HOME/.bash_aliases"
+    # Expand PATH when .bash_aliases is sourced.
+    # shellcheck disable=SC2016
     append_once "$f" "# Neovim Path" 'export PATH="$PATH:/opt/nvim-linux-x86_64/bin"'
+    # Expand HOME when .bash_aliases is sourced.
+    # shellcheck disable=SC2016
     append_once "$f" "# Cargo Environment" '. "$HOME/.cargo/env"'
     append_once "$f" "# Neovim Aliases" $'alias vi=\'nvim\'\nalias vim=\'nvim\''
+    # Run the zellij command when .bash_aliases is sourced.
+    # shellcheck disable=SC2016
     append_once "$f" "# Zellij Auto-Start" 'eval "$(zellij setup --generate-auto-start bash)"'
     # Mint's and Parrot's default ~/.bashrc source ~/.bash_aliases; warn if this one doesn't.
     grep -q 'bash_aliases' "$HOME/.bashrc" 2>/dev/null \
@@ -411,6 +447,7 @@ main() {
     install_lazyvim
     install_nerd_font
     install_keyd
+    configure_xfce_tiling
     install_button_scroll
     add_user_groups
     configure_shell
