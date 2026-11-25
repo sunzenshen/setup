@@ -1,0 +1,52 @@
+# AutoHotkey Setup - Capslock Vim Remap
+
+This project contains an AutoHotkey (AHK) script designed to transform the `Caps Lock` key into a powerful modifier for Vim-style navigation, system controls, and window management. It is primarily intended for users who want to bring the efficiency of Vim home-row computing to the entire Windows environment.
+
+## Project Overview
+
+- **Main Script:** `capslock_remap_vim.ahk`
+- **Compiled Executable:** `capslock_remap_vim.exe`
+- **Core Technology:** [AutoHotkey](https://www.autohotkey.com/) (v2.0)
+- **Primary Functionality:**
+    - Disables default Caps Lock behavior.
+    - `Caps Lock` (tap) -> `Esc`.
+    - `Caps Lock` (held) + `H/J/K/L` -> Arrow keys (Vim-style).
+    - `Caps Lock` (held) + `D/U` -> `PageDown` / `PageUp`.
+    - `Caps Lock` (held) + `N/M` -> `Backspace` / `Delete`.
+    - `Caps Lock` (held) + `,/.` -> `Ctrl+Left` / `Ctrl+Right` (Word movement).
+    - System shortcuts for window closing, tab switching, virtual desktops, and volume control.
+    - `Caps Lock + Alt + H/J/K/L` window tiling (direct moves, no Win+arrows) and `Caps Lock + '` for task view.
+    - Plain `Alt` is never remapped (zellij in Alacritty), and mouse buttons are left to MarbleScroll.
+
+## Usage
+
+### Running the Script
+1.  **Directly via AHK:** If you have AutoHotkey installed, double-click `capslock_remap_vim.ahk`.
+2.  **Via Executable:** Run `capslock_remap_vim.exe` if you do not wish to install AutoHotkey or are on a machine where it isn't available.
+
+### Key Mappings Summary
+| Shortcut | Action |
+| :--- | :--- |
+| `Caps Lock` | `Esc` |
+| `Caps Lock + H/J/K/L` | Left / Down / Up / Right |
+| `Caps Lock + D / U` | Page Down / Page Up |
+| `Caps Lock + N / M` | Backspace / Delete |
+| `Caps Lock + ;` | Enter |
+| `Caps Lock + Space` | Ctrl + Space |
+| `Caps Lock + E` | Close Window (`Alt+F4`) |
+| `Caps Lock + W` | Close Tab (`Ctrl+F4`) |
+| `Caps Lock + Tab / Q` | Next Tab / Previous Tab |
+| `Caps Lock + [ / ]` | Switch Virtual Desktops |
+| `Caps Lock + Alt + H / L` | Window to left / right half (repeat: next monitor) |
+| `Caps Lock + Alt + K / J` | Maximize / Restore or minimize |
+| `Caps Lock + Alt + F` | F11 (fullscreen) |
+
+## Development and Modification
+
+- **Editing:** Open `capslock_remap_vim.ahk` in any text editor.
+- **Compiling:** Use `Ahk2Exe` (install it from AutoHotkey Dash > Compile) to update `capslock_remap_vim.exe` after making changes to the `.ahk` file. The `.exe` is gitignored; the Startup shortcut runs it, so recompile after every edit and bump the tray tip (`A_IconTip`) when behavior changes.
+- **Validating:** `AutoHotkey64.exe /ErrorStdOut /validate capslock_remap_vim.ahk` (CI runs the same check).
+- **Conventions:**
+    - Keep one hotkey per line, keep existing comments, and keep LF line endings.
+    - The script uses `#HotIf GetKeyState("CapsLock", "P")` for conditional mapping.
+    - `{Blind}` is used in many mappings to allow modifier keys (like Shift) to be combined with the remapped keys (e.g., `Caps Lock + Shift + H` to select text to the left).
