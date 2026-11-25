@@ -27,8 +27,8 @@
 ;         Media keys            - Up/Down (volume), Left/Right (previous/next track)
 ; - Capslock + Alt + H/J/K/L sends Win+Left/Down/Up/Right. Capslock + Alt + F sends F11.
 ; - Plain Alt shortcuts pass through for zellij in Alacritty.
-; - Mouse side buttons (back and forward) both act as the middle button, matching Linux
-;     (e.g. Logitech Trackman Marble): click = middle click, hold + move = scroll with MarbleScroll.
+; - Mouse buttons are not remapped here: MarbleScroll (github.com/sunzenshen/MarbleScroll) makes the
+;     side buttons act as middle (click = middle click, hold + move = scroll), matching Linux.
 
 
 ; This script is mostly assembled from modified versions of the following awesome scripts:
@@ -219,9 +219,3 @@ Capslock & ] up::Send {Blind}{Ctrl Up}{LWIN Up}{Right Up}
 ; Capslock + ' (Task View: Win+Tab)
 Capslock & '::Send {Blind}{LWIN Down}{Tab Down}
 Capslock & ' up::Send {Blind}{LWIN Up}{Tab Up}
-
-
-; Mouse side buttons: both act as the middle button (matches etc/keyd/trackman.conf on Linux).
-; Holding either one while MarbleScroll runs scrolls; a click is a middle click.
-XButton1::MButton
-XButton2::MButton
