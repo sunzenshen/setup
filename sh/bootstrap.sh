@@ -416,6 +416,8 @@ configure_shell() {
     # shellcheck disable=SC2016
     append_once "$f" "# Zellij Auto-Start" 'eval "$(zellij setup --generate-auto-start bash)"'
     # Mint's and Parrot's default ~/.bashrc source ~/.bash_aliases; warn if this one doesn't.
+    # The ~ paths are literal text in a message for the user to copy.
+    # shellcheck disable=SC2088
     grep -q 'bash_aliases' "$HOME/.bashrc" 2>/dev/null \
         || warn "~/.bashrc does not source ~/.bash_aliases; add: [ -f ~/.bash_aliases ] && . ~/.bash_aliases"
 }
