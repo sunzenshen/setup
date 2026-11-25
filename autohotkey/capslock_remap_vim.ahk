@@ -46,20 +46,63 @@
 
 #Persistent
 SetCapsLockState, AlwaysOff
+; Never leave Win held down by Caps+Alt tiling if the script exits or reloads.
+OnExit("ReleaseTilingWin")
 
 ; Alan's Mods:
 ; CapsLock pressed alone is an esc press
 CapsLock::Send {Blind}{esc}
 
 ; Capslock + Alt + hjkl (Windows Tiling) and f (Fullscreen)
-; Mask the Alt release before sending the shortcut.
+; Win stays held while Capslock+Alt are held, so hjkl can be tapped repeatedly like
+; holding Win and tapping arrows. Releasing Win after every press would open Snap Assist,
+; which swallows the next press. Win is released when Capslock or Alt is let go.
+; vk07 masks the Alt/Win releases so they don't open the app menu or Start menu.
 #If GetKeyState("CapsLock", "P") && GetKeyState("Alt", "P")
-Capslock & h::SendInput {Blind}{vk07}{Alt Up}#{Left}
-Capslock & j::SendInput {Blind}{vk07}{Alt Up}#{Down}
-Capslock & k::SendInput {Blind}{vk07}{Alt Up}#{Up}
-Capslock & l::SendInput {Blind}{vk07}{Alt Up}#{Right}
-Capslock & f::SendInput {Blind}{vk07}{Alt Up}{F11}
+Capslock & h::TileWindow("Left")
+Capslock & j::TileWindow("Down")
+Capslock & k::TileWindow("Up")
+Capslock & l::TileWindow("Right")
+Capslock & f::
+    ReleaseTilingWin()
+    SendInput {Blind}{vk07}{Alt Up}{F11}
+return
 #If
+
+TileWindow(direction) {
+    global tilingWinHeld
+    ; Check the real Win state too, in case another binding already lifted it.
+    if (!tilingWinHeld || !GetKeyState("LWin")) {
+        tilingWinHeld := true
+        SendInput {Blind}{vk07}{Alt Up}{LWin Down}
+        SetTimer, CheckTilingChord, 10
+    }
+    SendInput {Blind}{%direction%}
+}
+
+; Fallback for letting go of Capslock; releasing Alt is handled right away below.
+CheckTilingChord() {
+    if !(GetKeyState("CapsLock", "P") && GetKeyState("Alt", "P"))
+        ReleaseTilingWin()
+}
+
+ReleaseTilingWin() {
+    global tilingWinHeld
+    SetTimer, CheckTilingChord, Off
+    if (tilingWinHeld) {
+        tilingWinHeld := false
+        if !GetKeyState("LWin", "P")
+            SendInput {Blind}{vk07}{LWin Up}
+    }
+}
+
+; ~ lets Alt through untouched (zellij keeps working); this only ends a tiling chord.
+~LAlt up::ReleaseTilingWin()
+~RAlt up::ReleaseTilingWin()
+    SetTimer, ReleaseTilingWin, Off
+    SendInput {Blind}{vk07}{LWin Up}
+    tilingWinHeld := false
+return
 
 
 ; --- Default behavior: Capslock + <key> sends Ctrl + <key> (Explicitly mapped) ---
