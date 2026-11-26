@@ -46,6 +46,7 @@ $MarbleScrollDir  = Join-Path $env:LOCALAPPDATA 'Programs\MarbleScroll'
 $DataDir          = Join-Path $env:LOCALAPPDATA 'setup-bootstrap'
 $RunKey           = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 
+$script:Upgrade = -not $NoUpgrade
 $script:Changes = New-Object System.Collections.Generic.List[string]
 
 # --- Helpers ---------------------------------------------------------------
@@ -113,7 +114,7 @@ function Install-PackageList {
         '--accept-source-agreements', '--accept-package-agreements')
     foreach ($id in $WingetPackages) {
         if (Test-WingetInstalled $id) {
-            if ($NoUpgrade) { Write-Info "$id already installed."; continue }
+            if (-not $script:Upgrade) { Write-Info "$id already installed."; continue }
             & winget upgrade --id $id @common | Out-Host
             if ($LASTEXITCODE -eq 0) { Add-Change "winget upgraded: $id" }
             elseif ($LASTEXITCODE -eq $noUpdateAvailable) { Write-Info "$id is up to date." }
@@ -220,7 +221,7 @@ function Install-MarbleScroll {
     $installed = $null
     if ((Test-Path $exe) -and (Test-Path $versionFile)) { $installed = (Get-Content $versionFile -TotalCount 1).Trim() }
 
-    if ($installed -and $NoUpgrade) {
+    if ($installed -and -not $script:Upgrade) {
         Write-Info "MarbleScroll $installed already installed."
     } else {
         $release = $null
