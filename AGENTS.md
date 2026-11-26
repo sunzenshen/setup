@@ -40,7 +40,7 @@ Answer these before proposing it:
 
 - The default must be safe for a work computer.
 - `-Personal` (Windows) adds what stays off a work computer. Today that is
-  AutoHotkey with the Caps Lock startup step, and Signal. AutoHotkey is banned
+  AutoHotkey with the Caps Lock startup step, Signal, Discord and Steam. AutoHotkey is banned
   at the owner's workplace: without `-Personal` nothing may install, start, or
   modify anything AutoHotkey-related.
 - Chat apps, game launchers, and anything that hooks input or looks like

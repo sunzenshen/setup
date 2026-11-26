@@ -13,7 +13,7 @@
     By default it also upgrades the listed winget packages and MarbleScroll.
     -NoUpgrade: only install what is missing (quick, no upgrades).
     -Personal:  also install what stays off a work computer: AutoHotkey with
-                the Caps Lock remap at login, and Signal. Without it nothing
+                the Caps Lock remap at login, Signal, Discord and Steam. Without it nothing
                 AutoHotkey-related is installed, started or changed.
     -Tweaks:    also apply per-user Windows settings (Explorer shows extensions
                 and hidden files and opens to This PC, dark mode, shortest key
@@ -58,6 +58,8 @@ $WingetPackages = @(
 $PersonalPackages = @(
     'AutoHotkey.AutoHotkey'          # v2
     'OpenWhisperSystems.Signal'
+    'Discord.Discord'
+    'Valve.Steam'
 )
 $RepoRawUrl       = 'https://raw.githubusercontent.com/sunzenshen/setup/master'
 $AhkScriptRel     = 'autohotkey/capslock_remap_vim.ahk'
