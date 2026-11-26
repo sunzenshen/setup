@@ -22,6 +22,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 UPGRADE=1
 CHANGES=()
+# Git identity and editor, applied only where Git has no value yet.
+GIT_USER_NAME="Alan Shen"
+GIT_USER_EMAIL="sunzenshen@gmail.com"
+GIT_EDITOR_CMD="vim"
 
 # Packages wanted everywhere. Missing ones are reported and skipped, not fatal.
 COMMON_PACKAGES=(
@@ -422,6 +426,28 @@ configure_shell() {
         || warn "~/.bashrc does not source ~/.bash_aliases; add: [ -f ~/.bash_aliases ] && . ~/.bash_aliases"
 }
 
+# Fill in Git settings that are not set yet; never overwrite an existing value.
+configure_git() {
+    log "Git defaults"
+    local key
+    local -A defaults=(
+        [user.name]="$GIT_USER_NAME"
+        [user.email]="$GIT_USER_EMAIL"
+        [core.editor]="$GIT_EDITOR_CMD"
+    )
+    for key in user.name user.email core.editor; do
+        if [[ -n "$(git config --global --get "$key" || true)" ]]; then
+            info "$key is set."
+        else
+            git config --global "$key" "${defaults[$key]}"
+            changed "git config --global $key ${defaults[$key]}"
+        fi
+    done
+    # Git runs the editor directly, so the shell's vim alias does not apply.
+    command -v "$GIT_EDITOR_CMD" >/dev/null \
+        || warn "git core.editor is '$GIT_EDITOR_CMD' but no such command is installed."
+}
+
 cleanup() {
     ((UPGRADE)) || return 0
     log "Cleanup"
@@ -453,6 +479,7 @@ main() {
     install_button_scroll
     add_user_groups
     configure_shell
+    configure_git
     cleanup
     summary
 }

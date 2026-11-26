@@ -6,12 +6,15 @@
     Run as your normal user, NOT from an elevated prompt (winget asks for
     elevation itself when a package needs it):
 
-        powershell -ExecutionPolicy Bypass -File windows\bootstrap.ps1 [-NoUpgrade] [-Tweaks]
+        powershell -ExecutionPolicy Bypass -File windows\bootstrap.ps1 [-NoUpgrade] [-Tweaks] [-Personal]
 
     Re-runnable: each step checks first and only installs or changes what is
     missing or out of date, then prints a summary of what changed.
     By default it also upgrades the listed winget packages and MarbleScroll.
     -NoUpgrade: only install what is missing (quick, no upgrades).
+    -Personal:  also install what stays off a work computer: AutoHotkey with
+                the Caps Lock remap at login, Signal, Discord and Steam. Without it nothing
+                AutoHotkey-related is installed, started or changed.
     -Tweaks:    also apply per-user Windows settings (Explorer shows extensions
                 and hidden files and opens to This PC, dark mode, shortest key
                 repeat delay, mouse acceleration off).
@@ -25,7 +28,8 @@
 [CmdletBinding()]
 param(
     [switch]$NoUpgrade,
-    [switch]$Tweaks
+    [switch]$Tweaks,
+    [switch]$Personal
 )
 
 Set-StrictMode -Version Latest
@@ -35,14 +39,13 @@ $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest is very slow with
 
 # --- Settings --------------------------------------------------------------
 # winget package IDs (exact). Unknown IDs are reported and skipped, not fatal.
+# This default list is meant to be safe for a work computer.
 $WingetPackages = @(
     'Git.Git'
-    'AutoHotkey.AutoHotkey'          # v2
     'Alacritty.Alacritty'
     'Zellij.Zellij'
     'Neovim.Neovim'
     'DEVCOM.JetBrainsMonoNerdFont'
-    'OpenWhisperSystems.Signal'
     'Microsoft.WindowsTerminal'
     'Microsoft.PowerShell'
     'GitHub.cli'
@@ -50,6 +53,13 @@ $WingetPackages = @(
     'Microsoft.VisualStudioCode'
     'DominikReichl.KeePass'
     '7zip.7zip'
+)
+# Only with -Personal: things that do not belong on a work computer.
+$PersonalPackages = @(
+    'AutoHotkey.AutoHotkey'          # v2
+    'OpenWhisperSystems.Signal'
+    'Discord.Discord'
+    'Valve.Steam'
 )
 $RepoRawUrl       = 'https://raw.githubusercontent.com/sunzenshen/setup/master'
 $AhkScriptRel     = 'autohotkey/capslock_remap_vim.ahk'
@@ -64,6 +74,7 @@ $LocalHook        = Join-Path $env:USERPROFILE '.setup-local.ps1'
 
 $script:Upgrade = -not $NoUpgrade
 $script:ApplyTweaks = [bool]$Tweaks
+$script:Personal = [bool]$Personal
 $script:Changes = New-Object System.Collections.Generic.List[string]
 
 # --- Helpers ---------------------------------------------------------------
@@ -130,7 +141,10 @@ function Install-PackageList {
     $installerMismatch = -1978335090   # 0x8A15008E newer version uses a different install technology
     $common = @('--exact', '--source', 'winget', '--silent', '--disable-interactivity',
         '--accept-source-agreements', '--accept-package-agreements')
-    foreach ($id in $WingetPackages) {
+    $packages = $WingetPackages
+    if ($script:Personal) { $packages += $PersonalPackages }
+    else { Write-Info "Work-safe profile; skipping (add -Personal to include): $($PersonalPackages -join ', ')" }
+    foreach ($id in $packages) {
         if (Test-WingetInstalled $id) {
             if (-not $script:Upgrade) { Write-Info "$id already installed."; continue }
             & winget upgrade --id $id @common | Out-Host
@@ -369,6 +383,88 @@ function Find-GitExe {
     return $null
 }
 
+# Rust comes from rustup, which also keeps itself and the toolchains up to date,
+# so it is not in the winget upgrade list.
+function Install-Rust {
+    Write-Step 'Rust (rustup)'
+    $rustup = Join-Path $env:USERPROFILE '.cargo\bin\rustup.exe'
+    if (-not (Test-Path $rustup)) {
+        & winget install --id Rustlang.Rustup --exact --source winget --silent --disable-interactivity `
+            --accept-source-agreements --accept-package-agreements | Out-Host
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $rustup)) {
+            Write-Warning "rustup install failed (exit code $LASTEXITCODE)"
+            return
+        }
+        Add-Change 'installed rustup and the stable Rust toolchain'
+    } elseif ($script:Upgrade) {
+        # rustup reports progress on stderr; keep that from becoming an error record on 5.1.
+        $previous = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try { $output = (& $rustup update 2>&1 | Out-String) } finally { $ErrorActionPreference = $previous }
+        if ($LASTEXITCODE -ne 0) { Write-Warning "rustup update failed (exit code $LASTEXITCODE)" }
+        elseif ($output -match '(?m)\bupdated\b') { Add-Change 'rustup updated Rust' }
+        else { Write-Info 'Rust is up to date.' }
+    } else {
+        Write-Info 'rustup already installed.'
+    }
+
+    # The default (MSVC) toolchain cannot link without the Visual C++ build tools.
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    $vcTools = $null
+    if (Test-Path $vswhere) {
+        $vcTools = & $vswhere -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    }
+    if (-not $vcTools) {
+        Write-Warning 'Visual C++ build tools not found; Rust cannot link programs until they are installed: winget install Microsoft.VisualStudio.2022.BuildTools --override "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive --wait"'
+    }
+}
+
+# LazyVim starter config, only when Neovim has no LazyVim config yet.
+function Install-LazyVim {
+    Write-Step 'LazyVim'
+    $config = Join-Path $env:LOCALAPPDATA 'nvim'
+    if ((Test-Path (Join-Path $config 'lazy-lock.json')) -or (Test-Path (Join-Path $config 'lua\config\lazy.lua'))) {
+        Write-Info 'LazyVim config already present; leaving it alone.'
+        return
+    }
+    $git = Find-GitExe
+    if (-not $git) { Write-Warning 'git not found; skipping LazyVim.'; return }
+
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    foreach ($dir in $config, (Join-Path $env:LOCALAPPDATA 'nvim-data')) {
+        if (Test-Path $dir) {
+            Move-Item -Path $dir -Destination "$dir.bak.$stamp"
+            Write-Info "Backed up $dir -> $dir.bak.$stamp"
+        }
+    }
+    & $git clone --quiet --depth 1 https://github.com/LazyVim/starter $config
+    if ($LASTEXITCODE -ne 0) { Write-Warning "LazyVim clone failed (exit code $LASTEXITCODE)"; return }
+    Remove-Item (Join-Path $config '.git') -Recurse -Force
+    Add-Change 'installed LazyVim starter config (plugins install on the first nvim start)'
+}
+
+# Append a block to a file once, keyed on an exact marker line.
+function Add-ProfileBlock {
+    param([string]$File, [string]$Marker, [string]$Body)
+    if ((Test-Path $File) -and (@(Get-Content $File) -contains $Marker)) {
+        Write-Info "$Marker already present in $File."
+        return
+    }
+    $dir = Split-Path -Parent $File
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    Add-Content -Path $File -Value "`r`n$Marker`r`n$Body" -Encoding UTF8
+    Add-Change "added '$Marker' to $File"
+}
+
+# PowerShell 7 profile only: Windows PowerShell 5.1 blocks profile scripts by
+# default, so a profile there would print an error in every new window.
+function Install-ShellProfile {
+    Write-Step 'PowerShell profile'
+    $documents = [Environment]::GetFolderPath('MyDocuments')
+    $profilePath = Join-Path $documents 'PowerShell\Microsoft.PowerShell_profile.ps1'
+    Add-ProfileBlock $profilePath '# Neovim Aliases' "Set-Alias vi nvim`r`nSet-Alias vim nvim"
+}
+
 # Fill in Git settings that are not set yet; never overwrite an existing value.
 function Install-GitConfig {
     Write-Step 'Git defaults'
@@ -467,8 +563,11 @@ function Write-Summary {
 function Invoke-Bootstrap {
     Test-Preflight
     Install-PackageList
-    Install-AhkStartup
+    if ($script:Personal) { Install-AhkStartup }
     Install-MarbleScroll
+    Install-Rust
+    Install-LazyVim
+    Install-ShellProfile
     Install-GitConfig
     Install-SettingTweak
     Invoke-LocalHook
