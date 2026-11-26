@@ -5,7 +5,7 @@ This project contains an AutoHotkey (AHK) script designed to transform the `Caps
 ## Project Overview
 
 - **Main Script:** `capslock_remap_vim.ahk`
-- **Compiled Executable:** `capslock_remap_vim.exe`
+- **Compiled Executable (optional, not in the repo):** `capslock_remap_vim.exe`
 - **Core Technology:** [AutoHotkey](https://www.autohotkey.com/) (v2.0)
 - **Primary Functionality:**
     - Disables default Caps Lock behavior.
@@ -21,8 +21,9 @@ This project contains an AutoHotkey (AHK) script designed to transform the `Caps
 ## Usage
 
 ### Running the Script
-1.  **Directly via AHK:** If you have AutoHotkey installed, double-click `capslock_remap_vim.ahk`.
-2.  **Via Executable:** Run `capslock_remap_vim.exe` if you do not wish to install AutoHotkey or are on a machine where it isn't available.
+1.  **Through the bootstrap (normal):** `windows\bootstrap.ps1 -Personal` installs AutoHotkey v2 and starts the `.ahk` at login. Without `-Personal` nothing AutoHotkey-related is touched.
+2.  **Directly via AHK:** If you have AutoHotkey installed, double-click `capslock_remap_vim.ahk`.
+3.  **Via Executable (fallback):** A compiled `capslock_remap_vim.exe` works on a machine without AutoHotkey, but never run it alongside the script.
 
 ### Key Mappings Summary
 | Shortcut | Action |

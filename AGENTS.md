@@ -18,6 +18,11 @@ file directly.
 - Inventory first when evaluating a machine: `winget list`, the Startup folder,
   HKCU/HKLM Run keys and logon scheduled tasks on Windows; `apt list --installed`
   and `flatpak list` on Linux. Compare against the lists in the scripts.
+- Look for second copies too: `Get-Command <tool> -All`, `~\.cargo\bin`, and
+  the order of the user and machine PATH. `winget list` does not show a
+  cargo-built or hand-unzipped copy that shadows the winget one.
+- An autostart entry is "new" only against a baseline. If there is none, list
+  them all and say so.
 
 ## Evaluating a new app
 
@@ -25,7 +30,10 @@ Answer these before proposing it:
 
 1. Where does it come from? Prefer the system package source (winget with an
    exact ID, apt, then Flathub). A direct download needs a pinned or
-   checksum-verified release, like MarbleScroll and keyd.
+   checksum-verified release: keyd is pinned to a tag; MarbleScroll, Neovim
+   and the Nerd Font on Linux are checked against the SHA-256 published with
+   the release (this catches a bad download, not a compromised release).
+   rustup's own installer over HTTPS is the one accepted exception.
 2. Is it work-safe? See the profiles below. If unsure, ask; do not guess.
 3. Does it need admin, a reboot, a service, or an autostart entry? Say so.
 4. Does it self-update? If it does (rustup), keep it out of the package
@@ -47,7 +55,9 @@ Answer these before proposing it:
   automation to endpoint security belong in the personal profile unless the
   owner says otherwise. MarbleScroll and KeePass are deliberately in the
   default.
-- Linux has no profile split yet.
+- `--personal` (Linux) adds Signal and Steam. keyd is deliberately in the
+  Linux default: the owner wants it on every Linux machine, unlike AutoHotkey
+  on Windows.
 
 ## How the bootstraps must behave
 
@@ -80,6 +90,15 @@ Answer these before proposing it:
   it up by its install path (see `Find-GitExe`, `Find-AutoHotkeyExe`).
 - winget exit codes that are not failures are handled explicitly (no update
   available, installer type mismatch). Add new ones the same way.
+- `git config --get` also sees the system-level file that Git for Windows
+  writes (`init.defaultBranch`, `core.autocrlf`, `credential.helper`), so the
+  installer's values win over the script's defaults.
+- After the way PowerShell 7 is installed changes (MSI to MSIX), running apps
+  keep the old `pwsh.exe` path until they restart. If an agent's PowerShell
+  tool fails, say so and use `powershell.exe` or Git Bash.
+- PSScriptAnalyzer is not on a fresh machine. Lint locally with
+  `Install-Module PSScriptAnalyzer -Scope CurrentUser` (ask first), or say
+  that only CI linted the change.
 - Do not write a Windows PowerShell 5.1 profile: a fresh machine blocks
   profile scripts there. Profile additions go to the PowerShell 7 profile
   through `Add-ProfileBlock`, keyed on a marker line.
@@ -90,12 +109,24 @@ Answer these before proposing it:
 - Packages missing from a distro's repos are reported and skipped.
 - Root-owned config files go through `install_root_file`, which backs up the
   old file.
+- Release downloads go through `fetch` and then `verify_release_asset`
+  before anything is unpacked.
+- Git runs `core.editor` directly: shell aliases and the PATH line in
+  `~/.bash_aliases` do not apply, so the default is an absolute path.
+- A Windows checkout has CRLF line endings in `sh/`; test from a Linux
+  checkout, not through `/mnt/c` in WSL.
 
 ## Testing a change
 
 - Test on a real machine, not only CI. CI checks parsing and lint only.
 - Run with `-NoUpgrade` / `--no-upgrade` first, then a full run, then a
-  repeat run to confirm it reports nothing to do.
+  repeat run to confirm it reports nothing to do. On a personal machine use
+  `-Personal -Tweaks`, and run once without `-Personal`.
+- Prove nothing restarted: before and after each run, record the Startup
+  shortcuts (target, arguments, modified time), the HKCU/HKLM Run values and
+  the AutoHotkey and MarbleScroll process IDs with start times, and diff them.
+- Remove anything a test moved aside or left behind (for example under
+  `%LOCALAPPDATA%\setup-bootstrap`), or report it.
 - To test a fresh install of something already installed, move its folders
   aside and restore them afterwards rather than uninstalling. Uninstalling
   rustup, for example, deletes every cargo-installed tool.
