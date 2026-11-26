@@ -44,7 +44,8 @@ This project contains an AutoHotkey (AHK) script designed to transform the `Caps
 ## Development and Modification
 
 - **Editing:** Open `capslock_remap_vim.ahk` in any text editor.
-- **Compiling:** Use `Ahk2Exe` (install it from AutoHotkey Dash > Compile) to update `capslock_remap_vim.exe` after making changes to the `.ahk` file. The `.exe` is gitignored; the Startup shortcut runs it, so recompile after every edit and bump the tray tip (`A_IconTip`) when behavior changes.
+- **Startup:** `windows/bootstrap.ps1` installs AutoHotkey v2 with winget and points the Startup shortcut at `AutoHotkey64.exe` running this `.ahk` directly, so edits only need a script reload (re-run the bootstrap or use the tray menu). Bump the tray tip (`A_IconTip`) when behavior changes.
+- **Compiling (optional):** `Ahk2Exe` (install it from AutoHotkey Dash > Compile) can still build `capslock_remap_vim.exe` for machines without AutoHotkey. The `.exe` is gitignored. Do not run it alongside the script; the bootstrap stops a running compiled copy.
 - **Validating:** `AutoHotkey64.exe /ErrorStdOut /validate capslock_remap_vim.ahk` (CI runs the same check).
 - **Conventions:**
     - Keep one hotkey per line, keep existing comments, and keep LF line endings.
