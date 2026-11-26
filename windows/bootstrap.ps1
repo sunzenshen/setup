@@ -36,6 +36,13 @@ $WingetPackages = @(
     'Neovim.Neovim'
     'DEVCOM.JetBrainsMonoNerdFont'
     'OpenWhisperSystems.Signal'
+    'Microsoft.WindowsTerminal'
+    'Microsoft.PowerShell'
+    'GitHub.cli'
+    'JesseDuffield.lazygit'
+    'Microsoft.VisualStudioCode'
+    'DominikReichl.KeePass'
+    '7zip.7zip'
 )
 $RepoRawUrl       = 'https://raw.githubusercontent.com/sunzenshen/setup/master'
 $AhkScriptRel     = 'autohotkey/capslock_remap_vim.ahk'
@@ -110,6 +117,7 @@ function Test-Preflight {
 function Install-PackageList {
     Write-Step 'winget packages'
     $noUpdateAvailable = -1978335189   # 0x8A15002B APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE
+    $installerMismatch = -1978335090   # 0x8A15008E newer version uses a different install technology
     $common = @('--exact', '--source', 'winget', '--silent', '--disable-interactivity',
         '--accept-source-agreements', '--accept-package-agreements')
     foreach ($id in $WingetPackages) {
@@ -118,6 +126,9 @@ function Install-PackageList {
             & winget upgrade --id $id @common | Out-Host
             if ($LASTEXITCODE -eq 0) { Add-Change "winget upgraded: $id" }
             elseif ($LASTEXITCODE -eq $noUpdateAvailable) { Write-Info "$id is up to date." }
+            elseif ($LASTEXITCODE -eq $installerMismatch) {
+                Write-Info "$id has an update, but it was installed with a different installer type; winget cannot upgrade it in place (uninstall and re-run to switch)."
+            }
             else { Write-Warning "winget upgrade $id failed (exit code $LASTEXITCODE)" }
             continue
         }
@@ -283,9 +294,36 @@ function Install-MarbleScroll {
 
     if (-not (Test-Path $exe)) { return }
 
-    # Same value the tray menu's "Start with Windows" toggle writes.
-    $want = '"{0}"' -f $exe
+    # Settings are saved under %LOCALAPPDATA%\MarbleScroll; keep one copy before
+    # the first switch to the managed install path.
+    $settingsDir = Join-Path $env:LOCALAPPDATA 'MarbleScroll'
+    $settingsBackup = Join-Path $DataDir 'MarbleScroll-settings-backup'
+    if ((Test-Path $settingsDir) -and -not (Test-Path $settingsBackup)) {
+        Copy-Item -Path $settingsDir -Destination $settingsBackup -Recurse -Force
+        Add-Change "backed up MarbleScroll settings to $settingsBackup"
+    }
+
+    # An older MarbleScroll elsewhere (e.g. a dev build) may autostart through a
+    # Startup shortcut or its own Run entry. Take over its command-line arguments
+    # and remove the old autostart so only one copy ever starts.
+    $mArgs = ''
+    $startupDir = [Environment]::GetFolderPath('Startup')
+    $shell = New-Object -ComObject WScript.Shell
+    foreach ($file in @(Get-ChildItem -Path $startupDir -Filter '*.lnk')) {
+        $existing = $shell.CreateShortcut($file.FullName)
+        if ($existing.TargetPath -like '*\MarbleScroll.exe' -and $existing.TargetPath -ne $exe) {
+            if ($existing.Arguments) { $mArgs = $existing.Arguments }
+            Remove-Item $file.FullName -Force
+            Add-Change "removed old MarbleScroll Startup shortcut $($file.FullName) (was $($existing.TargetPath) $($existing.Arguments))"
+        }
+    }
     $current = (Get-ItemProperty -Path $RunKey -Name MarbleScroll -ErrorAction SilentlyContinue)
+    if ($current -and -not $mArgs -and $current.MarbleScroll -match '^"([^"]+)"\s*(.*)$' -and $Matches[1] -eq $exe) {
+        $mArgs = $Matches[2].Trim()
+    }
+
+    # Same value the tray menu's "Start with Windows" toggle writes (plus any arguments).
+    $want = ('"{0}" {1}' -f $exe, $mArgs).Trim()
     if (-not $current -or $current.MarbleScroll -ne $want) {
         if (-not (Test-Path $RunKey)) { New-Item -Path $RunKey -Force | Out-Null }
         New-ItemProperty -Path $RunKey -Name MarbleScroll -Value $want -PropertyType String -Force | Out-Null
@@ -294,8 +332,18 @@ function Install-MarbleScroll {
         Write-Info 'MarbleScroll already starts with Windows.'
     }
 
-    if (@(Get-Process -Name MarbleScroll -ErrorAction SilentlyContinue).Count -eq 0) {
-        Start-Process -FilePath $exe -WorkingDirectory $MarbleScrollDir
+    # Stop copies running from any other path, then make sure ours is running.
+    $running = @(Get-Process -Name MarbleScroll -ErrorAction SilentlyContinue)
+    $others = @($running | Where-Object { $_.Path -ne $exe })
+    if ($others.Count -gt 0) {
+        $others | Stop-Process -Force
+        $others | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
+        Add-Change 'stopped MarbleScroll running from another path'
+    }
+    if (@($running | Where-Object { $_.Path -eq $exe }).Count -eq 0) {
+        $startArgs = @{ FilePath = $exe; WorkingDirectory = $MarbleScrollDir }
+        if ($mArgs) { $startArgs.ArgumentList = $mArgs }
+        Start-Process @startArgs
         Add-Change 'started MarbleScroll'
     } else {
         Write-Info 'MarbleScroll is already running.'
