@@ -6,19 +6,26 @@
     Run as your normal user, NOT from an elevated prompt (winget asks for
     elevation itself when a package needs it):
 
-        powershell -ExecutionPolicy Bypass -File windows\bootstrap.ps1 [-NoUpgrade]
+        powershell -ExecutionPolicy Bypass -File windows\bootstrap.ps1 [-NoUpgrade] [-Tweaks]
 
     Re-runnable: each step checks first and only installs or changes what is
     missing or out of date, then prints a summary of what changed.
     By default it also upgrades the listed winget packages and MarbleScroll.
     -NoUpgrade: only install what is missing (quick, no upgrades).
+    -Tweaks:    also apply per-user Windows settings (Explorer shows extensions
+                and hidden files and opens to This PC, dark mode, shortest key
+                repeat delay, mouse acceleration off).
 
     Works from a checkout of this repo, or standalone (it then downloads the
     AutoHotkey script from GitHub).
+
+    If %USERPROFILE%\.setup-local.ps1 exists it is run at the end, for
+    machine-specific or private steps that do not belong in this repo.
 #>
 [CmdletBinding()]
 param(
-    [switch]$NoUpgrade
+    [switch]$NoUpgrade,
+    [switch]$Tweaks
 )
 
 Set-StrictMode -Version Latest
@@ -53,7 +60,10 @@ $MarbleScrollDir  = Join-Path $env:LOCALAPPDATA 'Programs\MarbleScroll'
 $DataDir          = Join-Path $env:LOCALAPPDATA 'setup-bootstrap'
 $RunKey           = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 
+$LocalHook        = Join-Path $env:USERPROFILE '.setup-local.ps1'
+
 $script:Upgrade = -not $NoUpgrade
+$script:ApplyTweaks = [bool]$Tweaks
 $script:Changes = New-Object System.Collections.Generic.List[string]
 
 # --- Helpers ---------------------------------------------------------------
@@ -350,6 +360,99 @@ function Install-MarbleScroll {
     }
 }
 
+function Find-GitExe {
+    $cmd = Get-Command git -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    # Just installed: not on this session's PATH yet.
+    $exe = Join-Path $env:ProgramFiles 'Git\cmd\git.exe'
+    if (Test-Path $exe) { return $exe }
+    return $null
+}
+
+# Fill in Git settings that are not set yet; never overwrite an existing value.
+function Install-GitConfig {
+    Write-Step 'Git defaults'
+    $git = Find-GitExe
+    if (-not $git) { Write-Warning 'git not found; skipping Git defaults.'; return }
+
+    $defaults = [ordered]@{
+        'init.defaultBranch' = 'main'
+        'core.autocrlf'      = 'true'
+        'credential.helper'  = 'manager'
+    }
+    foreach ($key in $defaults.Keys) {
+        $value = & $git config --get $key
+        if ($value) { Write-Info "$key = $value"; continue }
+        & $git config --global $key $defaults[$key]
+        Add-Change "git config --global $key $($defaults[$key])"
+    }
+
+    # Identity is asked for, not stored in this repo.
+    foreach ($key in 'user.name', 'user.email') {
+        if (& $git config --get $key) { Write-Info "$key is set."; continue }
+        if (-not [Environment]::UserInteractive -or [Console]::IsInputRedirected) {
+            Write-Warning "git $key is not set; run: git config --global $key <value>"
+            continue
+        }
+        $answer = (Read-Host "    git $key (blank to skip)").Trim()
+        if ($answer) {
+            & $git config --global $key $answer
+            Add-Change "git config --global $key set"
+        }
+    }
+}
+
+# Returns $true if the value was changed.
+function Install-RegistryValue {
+    param([string]$Path, [string]$Name, $Value, [string]$Type)
+    $current = Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue
+    if ($current -and "$($current.$Name)" -eq "$Value") { return $false }
+    if (-not (Test-Path $Path)) { New-Item -Path $Path -Force | Out-Null }
+    New-ItemProperty -Path $Path -Name $Name -Value $Value -PropertyType $Type -Force | Out-Null
+    return $true
+}
+
+function Install-SettingTweak {
+    Write-Step 'Windows settings'
+    if (-not $script:ApplyTweaks) { Write-Info 'Skipped (run with -Tweaks to apply).'; return }
+
+    $explorer = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    $theme = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+    $keyboard = 'HKCU:\Control Panel\Keyboard'
+    $mouse = 'HKCU:\Control Panel\Mouse'
+    $settings = @(
+        @{ Label = 'Explorer: show file extensions';       Path = $explorer; Name = 'HideFileExt';          Value = 0;    Type = 'DWord' }
+        @{ Label = 'Explorer: show hidden files';          Path = $explorer; Name = 'Hidden';               Value = 1;    Type = 'DWord' }
+        @{ Label = 'Explorer: open to This PC';            Path = $explorer; Name = 'LaunchTo';             Value = 1;    Type = 'DWord' }
+        @{ Label = 'Dark mode for apps';                   Path = $theme;    Name = 'AppsUseLightTheme';    Value = 0;    Type = 'DWord' }
+        @{ Label = 'Dark mode for Windows';                Path = $theme;    Name = 'SystemUsesLightTheme'; Value = 0;    Type = 'DWord' }
+        @{ Label = 'Keyboard: shortest repeat delay';      Path = $keyboard; Name = 'KeyboardDelay';        Value = '0';  Type = 'String' }
+        @{ Label = 'Keyboard: fastest repeat rate';        Path = $keyboard; Name = 'KeyboardSpeed';        Value = '31'; Type = 'String' }
+        @{ Label = 'Mouse: acceleration off (speed)';      Path = $mouse;    Name = 'MouseSpeed';           Value = '0';  Type = 'String' }
+        @{ Label = 'Mouse: acceleration off (threshold 1)'; Path = $mouse;   Name = 'MouseThreshold1';      Value = '0';  Type = 'String' }
+        @{ Label = 'Mouse: acceleration off (threshold 2)'; Path = $mouse;   Name = 'MouseThreshold2';      Value = '0';  Type = 'String' }
+    )
+    $changed = $false
+    foreach ($s in $settings) {
+        if (Install-RegistryValue -Path $s.Path -Name $s.Name -Value $s.Value -Type $s.Type) {
+            Add-Change "setting: $($s.Label)"
+            $changed = $true
+        }
+    }
+    if ($changed) { Write-Info 'Sign out and back in for these settings to take full effect.' }
+    else { Write-Info 'Windows settings are already applied.' }
+}
+
+# Machine-specific or private steps live outside this repo.
+function Invoke-LocalHook {
+    if (-not (Test-Path $LocalHook)) { return }
+    Write-Step "Local hook ($LocalHook)"
+    # In its own process, so an 'exit' or error in the hook cannot end this script early.
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $LocalHook | Out-Host
+    if ($LASTEXITCODE -ne 0) { Write-Warning "local hook failed (exit code $LASTEXITCODE)" }
+    else { Write-Info 'Local hook finished.' }
+}
+
 function Write-Summary {
     Write-Step 'Bootstrap complete.'
     if ($script:Changes.Count -gt 0) {
@@ -366,6 +469,9 @@ function Invoke-Bootstrap {
     Install-PackageList
     Install-AhkStartup
     Install-MarbleScroll
+    Install-GitConfig
+    Install-SettingTweak
+    Invoke-LocalHook
     Write-Summary
 }
 
