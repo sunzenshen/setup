@@ -19,6 +19,27 @@ jobs:
             bash -n "$script"
           done
 
+  powershell:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check PowerShell scripts
+        timeout-minutes: 5
+        shell: powershell
+        run: |
+          # Windows PowerShell 5.1 on purpose: that is what a fresh install has.
+          $failed = $false
+          foreach ($script in Get-ChildItem windows -Filter *.ps1) {
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$null, [ref]$errors)
+            if ($errors) { $errors | Out-Host; $failed = $true }
+          }
+          $findings = Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Error, Warning
+          if ($findings) { $findings | Format-Table -AutoSize | Out-Host; $failed = $true }
+          if ($failed) { exit 1 }
+
   autohotkey:
     runs-on: windows-latest
     steps:

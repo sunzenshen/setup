@@ -28,7 +28,7 @@
 ; - Capslock + Alt + H/J/K/L: left/right halves (H/L); repeat moves to the next monitor.
 ;   K maximizes, J restores/minimizes. Capslock + Alt + F sends F11.
 ; - Plain Alt shortcuts pass through for zellij in Alacritty.
-; - Mouse buttons are not remapped here: MarbleScroll (github.com/sunzenshen/MarbleScroll) makes the
+; - Mouse buttons are not remapped here: MarbleScroll (github.com/sunzenshen/CursedMarbleScroll) makes the
 ;     side buttons act as middle (click = middle click, hold + move = scroll), matching Linux.
 
 
