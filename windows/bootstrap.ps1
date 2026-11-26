@@ -483,6 +483,16 @@ function Install-GitConfig {
         Add-Change "git config --global $key $($defaults[$key])"
     }
 
+    # Git for Windows otherwise falls back to its bundled vim. Git runs the editor
+    # directly, so the profile's vim alias does not apply.
+    $editor = & $git config --get core.editor
+    if ($editor) { Write-Info "core.editor = $editor" }
+    elseif ((Get-Command nvim -ErrorAction SilentlyContinue) -or (Test-Path (Join-Path $env:ProgramFiles 'Neovim\bin\nvim.exe'))) {
+        & $git config --global core.editor nvim
+        Add-Change 'git config --global core.editor nvim'
+    }
+    else { Write-Info 'core.editor left unset (nvim not found).' }
+
     # Identity is asked for, not stored in this repo.
     foreach ($key in 'user.name', 'user.email') {
         if (& $git config --get $key) { Write-Info "$key is set."; continue }
@@ -496,6 +506,29 @@ function Install-GitConfig {
             Add-Change "git config --global $key set"
         }
     }
+}
+
+# A second copy of a tool from another installer (cargo, a manual unzip) can
+# shadow the winget one and go stale. Report it; removing it is the owner's call.
+# Reads PATH from the registry, so it is what a new terminal will see.
+function Test-DuplicateTool {
+    Write-Step 'Duplicate tools on PATH'
+    $dirs = @()
+    foreach ($scope in 'Machine', 'User') {
+        foreach ($dir in ([Environment]::GetEnvironmentVariable('Path', $scope) -split ';')) {
+            $dir = [Environment]::ExpandEnvironmentVariables($dir).Trim().TrimEnd('\')
+            if ($dir -and ($dirs -notcontains $dir)) { $dirs += $dir }
+        }
+    }
+    $found = $false
+    foreach ($tool in 'nvim', 'zellij', 'alacritty', 'gh', 'lazygit', 'rustup') {
+        $copies = @($dirs | ForEach-Object { Join-Path $_ "$tool.exe" } | Where-Object { Test-Path -LiteralPath $_ })
+        if ($copies.Count -gt 1) {
+            Write-Warning "$tool is on PATH more than once; the first one runs: $($copies -join ', ')"
+            $found = $true
+        }
+    }
+    if (-not $found) { Write-Info 'None found.' }
 }
 
 # Returns $true if the value was changed.
@@ -569,6 +602,7 @@ function Invoke-Bootstrap {
     Install-LazyVim
     Install-ShellProfile
     Install-GitConfig
+    Test-DuplicateTool
     Install-SettingTweak
     Invoke-LocalHook
     Write-Summary

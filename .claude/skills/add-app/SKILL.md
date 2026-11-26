@@ -21,9 +21,13 @@ winget list --id <Publisher.App> --exact
 - Use the exact ID from the `winget` source, never the `msstore` ID.
 - From `winget show`, note the installer type, whether it needs elevation, and
   its dependencies.
-- If `winget list` already shows the app from another installer (an `ARP\...`
-  or `MSIX\...` ID, or a different install technology), say so: winget may not
-  be able to upgrade it in place.
+- If the full `winget list` shows the app under an `ARP\...` or `MSIX\...` ID,
+  check whether winget still matches it: `winget list --id <Publisher.App>
+  --exact` exiting 0 means the bootstrap will treat it as installed (Discord
+  from its own installer does). If it does not match, or the install
+  technology differs, say so: winget may not be able to upgrade it in place.
+- Check for a second copy outside winget (`Get-Command <tool> -All`,
+  `~\.cargo\bin`); an older copy earlier on PATH shadows the winget one.
 
 Linux:
 
@@ -40,9 +44,10 @@ Pick the first that fits.
 |---|---|---|
 | winget list | The app is in the winget source | `$WingetPackages`, or `$PersonalPackages` if not work-safe |
 | apt list | The app is in Mint's and Parrot's repos | `COMMON_PACKAGES` (or `PARROT_ONLY_PACKAGES`) |
-| apt, else Flathub | Only some distros carry it | `APT_OR_FLATPAK` |
+| apt, else Flathub | Only some distros carry it (personal apps only today) | `PERSONAL_APT_OR_FLATPAK` |
+| Flathub only | The apt package is awkward (Steam: i386, licence prompt) | `PERSONAL_FLATPAKS` |
 | Its own updater | The tool manages its own versions (rustup) | A dedicated `Install-<Name>` / `install_<name>` step, outside the upgrade loop |
-| GitHub release | Not in any package source | A dedicated step modeled on `Install-MarbleScroll` (checksum-verified ZIP) or `install_neovim` (staged swap) |
+| GitHub release | Not in any package source | A dedicated step modeled on `Install-MarbleScroll` (checksum-verified ZIP) or `install_neovim` (`verify_release_asset`, then a staged swap) |
 | Config or default | A setting, alias, or config file | `Install-GitConfig`, `Add-ProfileBlock`, `Install-SettingTweak` (behind `-Tweaks`), `append_once`, `install_root_file` |
 
 A dedicated step must: check before acting, report through `Add-Change` /
@@ -53,7 +58,8 @@ from `Invoke-Bootstrap` / `main`.
 
 - Default list: safe on a work computer.
 - `$PersonalPackages` (run with `-Personal`): chat apps, game launchers,
-  AutoHotkey, and anything endpoint security may flag.
+  AutoHotkey, and anything endpoint security may flag. On Linux the personal
+  lists run with `--personal`; keyd stays in the default there.
 - Borderline (input hooks, VPNs, personal cloud sync, password managers,
   unsigned binaries): ask the owner.
 
@@ -88,8 +94,11 @@ powershell -ExecutionPolicy Bypass -File windows\bootstrap.ps1
 ```
 
 - Add `-Personal` when the app is in the personal list, and also run once
-  without it to confirm the app is skipped.
+  without it to confirm the app is skipped. Add `-Tweaks` on a machine that
+  already has the tweaks applied.
 - The last run must end with "Nothing to do".
+- Snapshot Startup shortcuts, Run values and the AutoHotkey and MarbleScroll
+  process IDs before and after, and diff them (see `AGENTS.md`).
 - To test a fresh install of something already present, move its folders
   aside and restore them afterwards; do not uninstall.
 - Confirm the app actually works (version command, a small real use), not

@@ -2,13 +2,18 @@
 #
 # Fresh-install bootstrap for Linux Mint (22.x) and Parrot OS (Debian-based).
 #
-# Usage: ./sh/bootstrap.sh [--no-upgrade]   (run as your normal user, NOT with sudo)
+# Usage: ./sh/bootstrap.sh [--no-upgrade] [--personal]
+#        (run as your normal user, NOT with sudo)
 #
 # Re-runnable: each step checks first and only installs or changes what is missing
 # or out of date, then prints a summary of what changed.
 # By default it also upgrades system packages, Neovim and Rust so the machine
 # always matches the latest version of this script.
 # --no-upgrade: only install what is missing (quick, no upgrades or autoremove).
+# --personal:   also install what stays off a work computer (Signal, Steam).
+#
+# If ~/.setup-local.sh exists it is run at the end, for machine-specific or
+# private steps that do not belong in this repo.
 
 set -Eeuo pipefail
 trap 'echo "ERROR: bootstrap failed at line $LINENO: $BASH_COMMAND" >&2' ERR
@@ -21,13 +26,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 UPGRADE=1
+PERSONAL=0
 CHANGES=()
+LOCAL_HOOK="$HOME/.setup-local.sh"
 # Git identity and editor, applied only where Git has no value yet.
 GIT_USER_NAME="Alan Shen"
 GIT_USER_EMAIL="sunzenshen@gmail.com"
-GIT_EDITOR_CMD="vim"
+# Absolute path: Git runs the editor directly, so neither the shell's vim alias
+# nor the PATH line in ~/.bash_aliases applies (cron, GUI tools).
+GIT_EDITOR_CMD="/opt/nvim-linux-x86_64/bin/nvim"
 
 # Packages wanted everywhere. Missing ones are reported and skipped, not fatal.
+# This default set is meant to be safe for a work computer.
 COMMON_PACKAGES=(
     ca-certificates git curl tar gzip unzip build-essential
     zbar-tools v4l-utils alacritty cinnamon timeshift flatpak xinput
@@ -36,10 +46,13 @@ COMMON_PACKAGES=(
 )
 # Pentest tools: only on Parrot (they are in its repos, not Mint's).
 PARROT_ONLY_PACKAGES=(burpsuite zaproxy)
+# Only with --personal: things that do not belong on a work computer.
 # apt package -> Flathub fallback when the distro repos don't carry it.
-declare -A APT_OR_FLATPAK=(
+declare -A PERSONAL_APT_OR_FLATPAK=(
     [signal-desktop]=org.signal.Signal
 )
+# Flathub only (the apt Steam package needs i386 multiarch and a licence prompt).
+PERSONAL_FLATPAKS=(com.valvesoftware.Steam)
 
 # --- Helpers ---------------------------------------------------------------
 log()  { printf '\n==> %s\n' "$*"; }
@@ -100,6 +113,36 @@ fetch() {
     if cmp -s "$tmp" "$dest"; then rm -f "$tmp"; else mv "$tmp" "$dest"; fi
 }
 
+# SHA-256 that GitHub publishes for an asset of a repo's latest release
+# (empty if it cannot be read, e.g. offline or rate-limited).
+github_asset_sha256() {
+    local repo="$1" asset="$2"
+    curl -fsSL --retry 3 "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null \
+        | awk -v want="\"name\": \"$asset\"" '
+            /"name":/ { hit = (index($0, want) > 0) }
+            hit && /"digest":/ && !done { print; done = 1 }' \
+        | sed -n 's/.*"sha256:\([0-9a-f]\{64\}\)".*/\1/p' || true
+}
+
+# Check a downloaded release asset against the digest GitHub publishes for it.
+# This catches a corrupt or truncated download; it is the same trust as the
+# release itself. A file that fails is deleted so it is never reused.
+# Returns 1 (after a warning) if the file could not be verified.
+verify_release_asset() {
+    local file="$1" repo="$2" asset="$3" expected actual
+    expected="$(github_asset_sha256 "$repo" "$asset")"
+    if [[ -z "$expected" ]]; then
+        warn "could not read the published SHA-256 for $asset ($repo); not installing it this run."
+        return 1
+    fi
+    actual="$(sha256sum "$file" | cut -d' ' -f1)"
+    if [[ "$actual" != "$expected" ]]; then
+        warn "$asset SHA-256 mismatch (expected $expected, got $actual); deleted $file."
+        rm -f "$file"
+        return 1
+    fi
+}
+
 # Path to a repo file: the local checkout if present, else downloaded from GitHub.
 repo_file() {
     local rel="$1" cached
@@ -147,7 +190,8 @@ preflight() {
     for arg in "$@"; do
         case "$arg" in
             --no-upgrade) UPGRADE=0 ;;
-            -h|--help) sed -n '3,11p' "${BASH_SOURCE[0]}"; exit 0 ;;
+            --personal) PERSONAL=1 ;;
+            -h|--help) sed -n '3,16p' "${BASH_SOURCE[0]}"; exit 0 ;;
             *) die "unknown argument: $arg" ;;
         esac
     done
@@ -203,22 +247,38 @@ install_packages() {
     apt_install_missing "${pkgs[@]}"
 
     local pkg app
-    for pkg in "${!APT_OR_FLATPAK[@]}"; do
-        app="${APT_OR_FLATPAK[$pkg]}"
-        if dpkg_installed "$pkg"; then
-            info "$pkg already installed (apt)."
-        elif flatpak info "$app" >/dev/null 2>&1; then
-            info "$app already installed (Flatpak)."
-        elif apt_has "$pkg"; then
-            apt_get install "$pkg"
-            changed "apt installed: $pkg"
-        else
-            info "$pkg not in apt repos; using Flathub."
+    if ((PERSONAL)); then
+        for pkg in "${!PERSONAL_APT_OR_FLATPAK[@]}"; do
+            app="${PERSONAL_APT_OR_FLATPAK[$pkg]}"
+            if dpkg_installed "$pkg"; then
+                info "$pkg already installed (apt)."
+            elif flatpak info "$app" >/dev/null 2>&1; then
+                info "$app already installed (Flatpak)."
+            elif apt_has "$pkg"; then
+                apt_get install "$pkg"
+                changed "apt installed: $pkg"
+            else
+                info "$pkg not in apt repos; using Flathub."
+                ensure_flathub
+                sudo flatpak install -y --noninteractive flathub "$app"
+                changed "flatpak installed: $app"
+            fi
+        done
+        for app in "${PERSONAL_FLATPAKS[@]}"; do
+            if flatpak info "$app" >/dev/null 2>&1; then
+                info "$app already installed (Flatpak)."
+                continue
+            fi
             ensure_flathub
-            sudo flatpak install -y --noninteractive flathub "$app"
-            changed "flatpak installed: $app"
-        fi
-    done
+            if sudo flatpak install -y --noninteractive flathub "$app"; then
+                changed "flatpak installed: $app"
+            else
+                warn "flatpak install $app failed; skipped."
+            fi
+        done
+    else
+        info "Work-safe profile; skipping (add --personal to include): ${!PERSONAL_APT_OR_FLATPAK[*]} ${PERSONAL_FLATPAKS[*]}"
+    fi
 
     # Signal Desktop refuses to run once too old, so keep Flatpak apps current too.
     if ((UPGRADE)) && command -v flatpak >/dev/null; then
@@ -266,13 +326,15 @@ install_neovim() {
     fi
 
     fetch "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz" "$archive"
-    tar -tzf "$archive" >/dev/null || die "corrupt Neovim archive: $archive (delete it and re-run)"
     local sum
     sum="$(sha256sum "$archive" | cut -d' ' -f1)"
+    # Same archive as the one already installed: nothing to verify or do.
     if [[ -x "$dest/bin/nvim" && "$(cat "$dest/.archive-sha256" 2>/dev/null)" == "$sum" ]]; then
         info "$("$dest/bin/nvim" --version | head -n1) is the latest release."
         return
     fi
+    verify_release_asset "$archive" neovim/neovim nvim-linux-x86_64.tar.gz || return 0
+    tar -tzf "$archive" >/dev/null || die "corrupt Neovim archive: $archive (delete it and re-run)"
 
     # Extract next to the target, then swap, so a failure never leaves /opt empty.
     local staging
@@ -313,6 +375,7 @@ install_nerd_font() {
     fi
     local zip="$CACHE_DIR/$name.zip"
     fetch "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$name.zip" "$zip"
+    verify_release_asset "$zip" ryanoasis/nerd-fonts "$name.zip" || return 0
     mkdir -p "$font_dir"
     unzip -oq "$zip" -d "$font_dir"
     fc-cache -f "$font_dir" >/dev/null
@@ -443,9 +506,22 @@ configure_git() {
             changed "git config --global $key ${defaults[$key]}"
         fi
     done
-    # Git runs the editor directly, so the shell's vim alias does not apply.
-    command -v "$GIT_EDITOR_CMD" >/dev/null \
-        || warn "git core.editor is '$GIT_EDITOR_CMD' but no such command is installed."
+    # Check the value Git will really use; an existing one is never overwritten.
+    # Only the first word is the command (the value may carry arguments).
+    local editor
+    editor="$(git config --global --get core.editor || true)"
+    command -v "${editor%% *}" >/dev/null \
+        || warn "git core.editor is '$editor' but no such command is installed."
+}
+
+# Machine-specific or private steps live outside this repo.
+run_local_hook() {
+    [[ -f "$LOCAL_HOOK" ]] || return 0
+    log "Local hook ($LOCAL_HOOK)"
+    # In its own process, so an 'exit' or error in the hook cannot end this script early.
+    local rc=0
+    bash "$LOCAL_HOOK" || rc=$?
+    if ((rc)); then warn "local hook failed (exit code $rc)"; else info "Local hook finished."; fi
 }
 
 cleanup() {
@@ -481,6 +557,7 @@ main() {
     configure_shell
     configure_git
     cleanup
+    run_local_hook
     summary
 }
 
