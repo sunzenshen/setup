@@ -1,7 +1,7 @@
 # Agent guide for this repo
 
 This repo sets up a new machine: `windows/bootstrap.ps1` for Windows 10/11 and
-`sh/bootstrap.sh` for Linux Mint and Parrot OS. Use this guide when asked to
+`linux/bootstrap.sh` for Linux Mint and Parrot OS. Use this guide when asked to
 evaluate, add, or change an app or a default. `autohotkey/AGENTS.md` covers the
 Caps Lock script itself.
 
@@ -105,7 +105,7 @@ Answer these before proposing it:
 
 ## Linux specifics
 
-- Keep `sh/bootstrap.sh` clean under shellcheck and `set -Eeuo pipefail`.
+- Keep `linux/bootstrap.sh` clean under shellcheck and `set -Eeuo pipefail`.
 - Packages missing from a distro's repos are reported and skipped.
 - Root-owned config files go through `install_root_file`, which backs up the
   old file.
@@ -115,7 +115,7 @@ Answer these before proposing it:
   `~/.bash_aliases` do not apply. The default is `vi`, a real command, and
   `register_vi_alternative` points it at Neovim with `update-alternatives`
   (the distro's vi stays as the fallback; a manual choice is left alone).
-- A Windows checkout has CRLF line endings in `sh/`; test from a Linux
+- A Windows checkout has CRLF line endings in `linux/`; test from a Linux
   checkout, not through `/mnt/c` in WSL.
 
 ## Testing a change
@@ -142,7 +142,7 @@ Answer these before proposing it:
 - Private or machine-specific steps go in `%USERPROFILE%\.setup-local.ps1`,
   which the Windows bootstrap runs if present. The repo must not name,
   download, or call anything private.
-- The owner's Git name and email in `sh/bootstrap.sh` are there on purpose.
+- The owner's Git name and email in `linux/bootstrap.sh` are there on purpose.
 
 ## Git workflow
 
