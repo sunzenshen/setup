@@ -112,7 +112,9 @@ Answer these before proposing it:
 - Release downloads go through `fetch` and then `verify_release_asset`
   before anything is unpacked.
 - Git runs `core.editor` directly: shell aliases and the PATH line in
-  `~/.bash_aliases` do not apply, so the default is an absolute path.
+  `~/.bash_aliases` do not apply. The default is `vi`, a real command, and
+  `register_vi_alternative` points it at Neovim with `update-alternatives`
+  (the distro's vi stays as the fallback; a manual choice is left alone).
 - A Windows checkout has CRLF line endings in `sh/`; test from a Linux
   checkout, not through `/mnt/c` in WSL.
 

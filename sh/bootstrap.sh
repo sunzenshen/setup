@@ -32,9 +32,13 @@ LOCAL_HOOK="$HOME/.setup-local.sh"
 # Git identity and editor, applied only where Git has no value yet.
 GIT_USER_NAME="Alan Shen"
 GIT_USER_EMAIL="sunzenshen@gmail.com"
-# Absolute path: Git runs the editor directly, so neither the shell's vim alias
-# nor the PATH line in ~/.bash_aliases applies (cron, GUI tools).
-GIT_EDITOR_CMD="/opt/nvim-linux-x86_64/bin/nvim"
+# Git runs the editor directly, so neither the shell's vim alias nor the PATH
+# line in ~/.bash_aliases applies. 'vi' is a real command on Mint and Parrot,
+# and register_vi_alternative points it at Neovim once that is installed.
+GIT_EDITOR_CMD="vi"
+NVIM_BIN="/opt/nvim-linux-x86_64/bin/nvim"
+# Above vim.tiny (15), vim (30) and the distro neovim package (30).
+VI_ALTERNATIVE_PRIORITY=60
 
 # Packages wanted everywhere. Missing ones are reported and skipped, not fatal.
 # This default set is meant to be safe for a work computer.
@@ -347,6 +351,26 @@ install_neovim() {
     changed "installed $("$dest/bin/nvim" --version | head -n1)"
 }
 
+# Make 'vi' mean Neovim for everything that does not read shell aliases (Git,
+# cron, GUI tools). It goes through the alternatives system, so the distro's
+# vi stays as the fallback and a manual 'update-alternatives --config vi'
+# choice is left alone.
+register_vi_alternative() {
+    log "vi alternative"
+    if [[ ! -x "$NVIM_BIN" ]]; then
+        info "Neovim is not installed at $NVIM_BIN; leaving vi as it is."
+        return 0
+    fi
+    local registered
+    registered="$(update-alternatives --query vi 2>/dev/null || true)"
+    if grep -qxF "Alternative: $NVIM_BIN" <<<"$registered"; then
+        info "$NVIM_BIN is already registered as a vi alternative."
+        return 0
+    fi
+    sudo update-alternatives --install /usr/bin/vi vi "$NVIM_BIN" "$VI_ALTERNATIVE_PRIORITY"
+    changed "registered $NVIM_BIN as a vi alternative (priority $VI_ALTERNATIVE_PRIORITY)"
+}
+
 install_lazyvim() {
     log "LazyVim"
     if [[ -f "$HOME/.config/nvim/lazy-lock.json" || -f "$HOME/.config/nvim/lua/config/lazy.lua" ]]; then
@@ -548,6 +572,7 @@ main() {
     install_packages
     install_rust_and_zellij
     install_neovim
+    register_vi_alternative
     install_lazyvim
     install_nerd_font
     install_keyd
