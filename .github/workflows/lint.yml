@@ -14,8 +14,8 @@ jobs:
           persist-credentials: false
       - name: Check shell scripts
         run: |
-          shellcheck sh/*.sh
-          for script in sh/*.sh; do
+          shellcheck linux/*.sh
+          for script in linux/*.sh; do
             bash -n "$script"
           done
 

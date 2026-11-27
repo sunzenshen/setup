@@ -2,7 +2,7 @@
 #
 # Fresh-install bootstrap for Linux Mint (22.x) and Parrot OS (Debian-based).
 #
-# Usage: ./sh/bootstrap.sh [--no-upgrade] [--personal]
+# Usage: ./linux/bootstrap.sh [--no-upgrade] [--personal]
 #        (run as your normal user, NOT with sudo)
 #
 # Re-runnable: each step checks first and only installs or changes what is missing
@@ -47,6 +47,7 @@ COMMON_PACKAGES=(
     zbar-tools v4l-utils alacritty cinnamon timeshift flatpak xinput
     qemu-system-x86 libvirt-daemon-system libvirt-clients bridge-utils
     virt-manager qemu-guest-agent spice-vdagent
+    ripgrep fd-find fzf jq keepassxc python3 nodejs
 )
 # Pentest tools: only on Parrot (they are in its repos, not Mint's).
 PARROT_ONLY_PACKAGES=(burpsuite zaproxy)

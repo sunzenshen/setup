@@ -52,7 +52,16 @@ $WingetPackages = @(
     'JesseDuffield.lazygit'
     'Microsoft.VisualStudioCode'
     'DominikReichl.KeePass'
+    'KeePassXCTeam.KeePassXC'        # second password manager on purpose: a backup if one bit-rots
     '7zip.7zip'
+    'BurntSushi.ripgrep.MSVC'        # LazyVim search
+    'sharkdp.fd'                     # LazyVim file picker
+    'junegunn.fzf'
+    'jqlang.jq'
+    'Python.Python.3.15'             # latest minor; bump when the next one ships
+    'OpenJS.NodeJS.LTS'              # latest LTS line
+    'Mozilla.Firefox'
+    'Google.Chrome'
 )
 # Only with -Personal: things that do not belong on a work computer.
 $PersonalPackages = @(
@@ -465,6 +474,28 @@ function Install-ShellProfile {
     Add-ProfileBlock $profilePath '# Neovim Aliases' "Set-Alias vi nvim`r`nSet-Alias vim nvim"
 }
 
+# Zellij opens new panes with $SHELL, which Windows does not set. Point it at
+# PowerShell 7 unless the config already has a default_shell of its own. The
+# config file is written by zellij itself, so only append; never rewrite it.
+function Install-ZellijConfig {
+    Write-Step 'Zellij shell'
+    $dir = $env:ZELLIJ_CONFIG_DIR
+    if (-not $dir) { $dir = Join-Path $env:APPDATA 'Zellij\config' }
+    $file = Join-Path $dir 'config.kdl'
+    $line = 'default_shell "pwsh"'
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+
+    if (Test-Path $file) {
+        $set = @(Get-Content $file | Where-Object { $_ -match '^\s*default_shell\s' })
+        if ($set.Count -gt 0) { Write-Info "default_shell already set in $file."; return }
+        [IO.File]::AppendAllText($file, "`r`n// Added by the setup bootstrap`r`n$line`r`n", $utf8)
+    } else {
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        [IO.File]::WriteAllText($file, "// Added by the setup bootstrap`r`n$line`r`n", $utf8)
+    }
+    Add-Change "zellij default_shell set to pwsh in $file"
+}
+
 # Fill in Git settings that are not set yet; never overwrite an existing value.
 function Install-GitConfig {
     Write-Step 'Git defaults'
@@ -601,6 +632,7 @@ function Invoke-Bootstrap {
     Install-Rust
     Install-LazyVim
     Install-ShellProfile
+    Install-ZellijConfig
     Install-GitConfig
     Test-DuplicateTool
     Install-SettingTweak
